@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build & Bundler Outputs
+dist/
+build/
+.vite/
+**/dist/
+**/build/
+**/.vite/
+
+# Environment Variables
+.env
+.env.local
+.env.*
+**/.env
+**/.env.local
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Generated Audio Files (Edge-TTS)
+backend/uploads/audio/en/words/*.mp3
+backend/uploads/audio/en/examples/*.mp3
+backend/uploads/audio/zh/words/*.mp3
+backend/uploads/audio/zh/examples/*.mp3
+!backend/uploads/audio/**/.gitkeep
+!**/.gitkeep
+
+# Logs & OS Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+Desktop.ini
+
