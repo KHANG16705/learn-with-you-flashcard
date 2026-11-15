@@ -6,8 +6,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATA_FILE = path.join(__dirname, 'data', 'oxford_3000_structured_4tiers.json');
-const CONCURRENCY = 8; // Số luồng chạy song song vừa đủ nhanh và không bị chặn IP
-const SAVE_INTERVAL = 150; // Tự động lưu tiến độ sau mỗi 150 từ
+const CONCURRENCY = 12; // Chạy 12 luồng song song để tốc độ xử lý 3.004 từ nhanh hơn
+const SAVE_INTERVAL = 100; // Tự động lưu tiến độ sau mỗi 100 từ
 
 // Bộ nhớ đệm lưu kết quả tra cứu ảnh Wikipedia theo batch để tránh lỗi HTTP 429 khi chạy 3.004 từ
 const wikiBatchImageCache = new Map();
@@ -276,6 +276,7 @@ async function processCard(card) {
 
   const hasMeaning = Boolean(card.meaning_vi && card.meaning_vi.trim() !== '');
   const hasIpa = Boolean(card.phonetic_primary);
+  const hasImageChecked = card.image_url !== undefined;
   const queryText = card.sense_note ? `${card.word} (${card.sense_note})` : card.word;
   const needImage = shouldFetchImage(card.part_of_speech);
 
@@ -283,7 +284,11 @@ async function processCard(card) {
   const [dictInfo, meaningVi, imageUrl] = await Promise.all([
     hasIpa && card.example_sentence ? Promise.resolve(null) : fetchDictionaryInfo(card.word),
     hasMeaning ? Promise.resolve(card.meaning_vi) : translateToVietnamese(queryText),
-    needImage ? fetchWikipediaImage(card.word, card.sense_note) : Promise.resolve(null),
+    hasImageChecked
+      ? Promise.resolve(card.image_url)
+      : needImage
+        ? fetchWikipediaImage(card.word, card.sense_note)
+        : Promise.resolve(null),
   ]);
 
   card.meaning_vi = meaningVi || card.word;
