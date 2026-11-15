@@ -6,25 +6,41 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATA_FILE = path.join(__dirname, 'data', 'oxford_3000_structured_4tiers.json');
-const CONCURRENCY = 12; // Chạy 12 luồng song song để tốc độ xử lý 3.004 từ nhanh hơn
-const SAVE_INTERVAL = 100; // Tự động lưu tiến độ sau mỗi 100 từ
+const SAVE_INTERVAL = 200; // Tự động lưu tiến độ sau mỗi 200 từ
 
-// Bộ nhớ đệm lưu kết quả tra cứu ảnh Wikipedia theo batch để tránh lỗi HTTP 429 khi chạy 3.004 từ
+// Bộ nhớ đệm lưu kết quả tra cứu ảnh Wikipedia theo batch
 const wikiBatchImageCache = new Map();
 
 /**
- * 1. Phân loại từ vựng cần lấy ảnh (Tránh ảnh rác cho từ hư/từ ngữ pháp):
- * Chỉ gọi API tìm ảnh nếu card.part_of_speech chứa ít nhất một trong các từ loại
- * mang hình tượng cụ thể: Danh từ (n., noun.), Động từ (v. - trừ auxiliary v. và modal v.),
- * Tính từ (adj.), hoặc Số đếm (number).
+ * Hàm tạm nghỉ giúp giãn nhịp gọi API công cộng, tránh bị giới hạn lượt (HTTP 429)
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Chuẩn hóa từ khóa tiếng Anh để tra từ điển (lấy từ đầu tiên trước dấu phẩy, bỏ ký hiệu ™, chuẩn hóa dấu nháy)
+ */
+function normalizeLookupWord(rawWord) {
+  if (!rawWord) return '';
+  return String(rawWord)
+    .split(',')[0]
+    .replace(/™/g, '')
+    .replace(/’/g, "'")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * 1. Phân loại từ vựng cần lấy ảnh (Tránh ảnh rác cho từ hư/từ ngữ pháp)
  */
 function shouldFetchImage(partOfSpeech = '') {
   if (!partOfSpeech) return false;
 
   const cleaned = String(partOfSpeech)
     .toLowerCase()
-    .replace(/\([^)]*\)/g, '') // Bỏ ghi chú trong ngoặc như (#1), (money)
-    .replace(/\b(auxiliary|modal)\s+v\./g, ''); // Loại bỏ auxiliary v. và modal v.
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\b(auxiliary|modal)\s+v\./g, '');
 
   const tokens = cleaned
     .split(/[,/]/)
@@ -35,9 +51,6 @@ function shouldFetchImage(partOfSpeech = '') {
   return tokens.some((token) => visualPos.has(token));
 }
 
-/**
- * Kiểm tra URL ảnh Wikipedia hợp lệ (<= 500 ký tự, không phải ảnh .svg biểu tượng, cờ, disambig...)
- */
 function isValidWikiImageUrl(imageUrl) {
   if (!imageUrl || typeof imageUrl !== 'string') return false;
   const trimmed = imageUrl.trim();
@@ -48,10 +61,6 @@ function isValidWikiImageUrl(imageUrl) {
   return !invalidImagePattern.test(trimmed);
 }
 
-/**
- * Gọi trực tiếp endpoint chính thức:
- * https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(queryTitle)}
- */
 async function queryWikipediaSummaryRest(queryTitle) {
   const normalizedKey = String(queryTitle).trim().toLowerCase();
   if (wikiBatchImageCache.has(normalizedKey)) {
@@ -83,39 +92,24 @@ async function queryWikipediaSummaryRest(queryTitle) {
   }
 }
 
-/**
- * 2. Hàm fetchWikipediaImage(word, senseNote) theo đúng đặc tả:
- * - Lấy từ đầu tiên nếu word có dấu phẩy (VD: "a, an" -> "a").
- * - Nếu có sense_note (VD: word="bank", sense_note="river"), ưu tiên thử "${cleanWord}_(${senseNote})"
- *   trước; nếu không có ảnh mới fallback về "${cleanWord}".
- */
 async function fetchWikipediaImage(word, senseNote) {
-  const cleanWord = String(word || '')
-    .split(',')[0]
-    .trim();
+  const cleanWord = String(word || '').split(',')[0].trim();
   if (!cleanWord) return null;
 
   if (senseNote && String(senseNote).trim() !== '') {
     const cleanSense = String(senseNote).trim();
-    const senseQuery = `${cleanWord}_(${cleanSense})`;
-    const senseImg = await queryWikipediaSummaryRest(senseQuery);
+    const senseImg = await queryWikipediaSummaryRest(`${cleanWord}_(${cleanSense})`);
     if (senseImg) return senseImg;
   }
 
   return await queryWikipediaSummaryRest(cleanWord);
 }
 
-/**
- * Nạp trước (Batch Prefetch) ảnh Wikipedia cho danh sách từ vựng bằng gói 50 từ/request
- * để tránh bị chặn IP (HTTP 429) khi làm giàu 3.004 từ liên tiếp.
- */
 async function prefetchWikipediaBatchCache(cards) {
   const queryTitlesSet = new Set();
   for (const card of cards) {
     if (!shouldFetchImage(card.part_of_speech)) continue;
-    const cleanWord = String(card.word || '')
-      .split(',')[0]
-      .trim();
+    const cleanWord = String(card.word || '').split(',')[0].trim();
     if (!cleanWord) continue;
     if (card.sense_note && String(card.sense_note).trim() !== '') {
       queryTitlesSet.add(`${cleanWord}_(${String(card.sense_note).trim()})`);
@@ -141,7 +135,7 @@ async function prefetchWikipediaBatchCache(cards) {
       });
 
       if (res.status === 429) {
-        await new Promise((r) => setTimeout(r, 2000));
+        await sleep(2000);
         res = await fetch(url, {
           headers: {
             'User-Agent': 'FlashcardSRSApp/1.0 (https://localhost; contact@flashcardsrs.local)',
@@ -167,7 +161,6 @@ async function prefetchWikipediaBatchCache(cards) {
           }
         }
 
-        // Ánh xạ ngược qua bảng redirects & normalized của Wikipedia
         const redirectMap = new Map();
         for (const r of redirects) {
           redirectMap.set(String(r.from).toLowerCase(), String(r.to).toLowerCase());
@@ -185,134 +178,320 @@ async function prefetchWikipediaBatchCache(cards) {
           wikiBatchImageCache.set(key, img);
         }
       }
-      await new Promise((r) => setTimeout(r, 220));
+      await sleep(220);
     } catch {
-      // Nếu lỗi batch thì từng từ sẽ tự fallback về queryWikipediaSummaryRest
+      // Bỏ qua nếu lỗi mạng
     }
   }
 }
 
-// Lấy Phiên âm IPA (US/UK), câu ví dụ & từ đồng nghĩa từ Free Dictionary API
-async function fetchDictionaryInfo(word) {
-  const cleanWord = word.split(',')[0].trim();
-  try {
-    const res = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
-
-    const entry = data[0];
-    let ipaUS = entry.phonetic || null;
-    let ipaUK = null;
-
-    if (Array.isArray(entry.phonetics)) {
-      for (const p of entry.phonetics) {
-        if (p.text) {
-          if (!ipaUS) ipaUS = p.text;
-          if (p.audio && p.audio.includes('-us')) ipaUS = p.text;
-          if (p.audio && p.audio.includes('-uk')) ipaUK = p.text;
+/**
+ * Tải kho phiên âm IPA chuẩn (US & UK, > 125.000 từ) từ open-dict-data/ipa-dict
+ */
+async function loadIpaDictionaries() {
+  console.log('📖 Đang tải bộ phiên âm IPA chuẩn (US & UK) từ ipa-dict...');
+  const parseIpaFile = (text) => {
+    const map = new Map();
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const tabIndex = line.indexOf('\t');
+      if (tabIndex > 0) {
+        const word = line.slice(0, tabIndex).trim().toLowerCase();
+        const ipa = line.slice(tabIndex + 1).split(',')[0].trim();
+        if (word && ipa && !map.has(word)) {
+          map.set(word, ipa);
         }
       }
     }
+    return map;
+  };
 
-    let exampleSentence = null;
-    const synonyms = new Set();
-    const antonyms = new Set();
+  try {
+    const [usRes, ukRes] = await Promise.all([
+      fetch('https://raw.githubusercontent.com/open-dict-data/ipa-dict/master/data/en_US.txt', {
+        signal: AbortSignal.timeout(15000),
+      }),
+      fetch('https://raw.githubusercontent.com/open-dict-data/ipa-dict/master/data/en_UK.txt', {
+        signal: AbortSignal.timeout(15000),
+      }),
+    ]);
 
-    if (Array.isArray(entry.meanings)) {
-      for (const m of entry.meanings) {
-        if (Array.isArray(m.synonyms)) m.synonyms.slice(0, 4).forEach((s) => synonyms.add(s));
-        if (Array.isArray(m.antonyms)) m.antonyms.slice(0, 4).forEach((a) => antonyms.add(a));
-        if (Array.isArray(m.definitions)) {
-          for (const d of m.definitions) {
-            if (!exampleSentence && d.example) {
-              exampleSentence = d.example;
+    const usText = usRes.ok ? await usRes.text() : '';
+    const ukText = ukRes.ok ? await ukRes.text() : '';
+    const usMap = parseIpaFile(usText);
+    const ukMap = parseIpaFile(ukText);
+    console.log(`✅ Đã nạp ${usMap.size} phiên âm US và ${ukMap.size} phiên âm UK.`);
+    return { usMap, ukMap };
+  } catch (err) {
+    console.warn('⚠️ Không tải được ipa-dict, sẽ dùng fallback từ điển API:', err.message);
+    return { usMap: new Map(), ukMap: new Map() };
+  }
+}
+
+/**
+ * Tra cứu IPA từ Map cho từ đơn hoặc cụm 2 từ (ví dụ: "because of", "ice cream")
+ */
+function lookupIpaFromMap(cleanWord, primaryMap, secondaryMap) {
+  if (!cleanWord) return null;
+
+  if (primaryMap.has(cleanWord)) return primaryMap.get(cleanWord);
+  if (secondaryMap.has(cleanWord)) return secondaryMap.get(cleanWord);
+
+  // Thử bỏ dấu gạch nối (VD: wi-fi -> wifi)
+  const noHyphen = cleanWord.replace(/-/g, '');
+  if (primaryMap.has(noHyphen)) return primaryMap.get(noHyphen);
+
+  // Nếu là cụm nhiều từ (VD: "because of", "ice cream"), ghép IPA từng từ lại
+  const parts = cleanWord.split(/[\s-]+/).filter(Boolean);
+  if (parts.length > 1) {
+    const partIpas = [];
+    for (let i = 0; i < parts.length; i++) {
+      const pIpa = primaryMap.get(parts[i]) || secondaryMap.get(parts[i]);
+      if (pIpa) {
+        partIpas.push(pIpa.replace(/^\/|\/$/g, ''));
+      }
+    }
+    if (partIpas.length === parts.length) {
+      return `/${partIpas.join(' ')}/`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Tải từ điển Wordset (A-Z, ~107.000 từ) để lấy sẵn câu ví dụ và từ đồng nghĩa chất lượng cao
+ */
+async function loadWordsetDictionary() {
+  console.log('📚 Đang tải bộ từ điển câu ví dụ & từ đồng nghĩa (Wordset A-Z)...');
+  const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  const dict = new Map();
+
+  try {
+    await Promise.all(
+      letters.map(async (ch) => {
+        const res = await fetch(
+          `https://raw.githubusercontent.com/wordset/wordset-dictionary/master/data/${ch}.json`,
+          { signal: AbortSignal.timeout(15000) }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          for (const [key, val] of Object.entries(data)) {
+            dict.set(key.toLowerCase(), val);
+          }
+        }
+      })
+    );
+    console.log(`✅ Đã nạp ${dict.size} mục từ điển Wordset.`);
+  } catch (err) {
+    console.warn('⚠️ Lỗi tải một phần Wordset:', err.message);
+  }
+  return dict;
+}
+
+/**
+ * Chuẩn hóa câu ví dụ cho đẹp (viết hoa chữ cái đầu, thêm dấu chấm nếu thiếu)
+ */
+function formatExampleSentence(sentence) {
+  if (!sentence) return '';
+  let text = String(sentence).trim().replace(/^["']|["']$/g, '');
+  if (!text) return '';
+  text = text.charAt(0).toUpperCase() + text.slice(1);
+  if (!/[.!?]$/.test(text)) {
+    text += '.';
+  }
+  return text;
+}
+
+/**
+ * Kiểm tra xem thẻ hiện tại đã có IPA thật (không phải fallback /từ/) chưa
+ */
+function hasRealIpa(card) {
+  if (!card.phonetic_primary) return false;
+  const fallbackIpa = `/${normalizeLookupWord(card.word)}/`;
+  const rawFallback = `/${String(card.word || '').split(',')[0].trim().toLowerCase()}/`;
+  return card.phonetic_primary !== fallbackIpa && card.phonetic_primary !== rawFallback;
+}
+
+/**
+ * Kiểm tra xem thẻ hiện tại đã có câu ví dụ thật (không phải câu mẫu chung) chưa
+ */
+function hasRealExample(card) {
+  if (!card.example_sentence) return false;
+  return !card.example_sentence.startsWith('This is an example sentence with the word');
+}
+
+/**
+ * Kiểm tra xem thẻ hiện tại đã có nghĩa tiếng Việt thật (không bị rơi về từ tiếng Anh) chưa
+ */
+function hasRealMeaning(card) {
+  if (!card.meaning_vi || card.meaning_vi.trim() === '') return false;
+  const meaningLower = card.meaning_vi.trim().toLowerCase();
+  const wordLower = String(card.word || '').trim().toLowerCase();
+  const cleanWordLower = normalizeLookupWord(card.word);
+  if (meaningLower === wordLower || meaningLower === cleanWordLower) return false;
+  if (/^\[[ab][12]\]\s/i.test(meaningLower)) return false;
+  return true;
+}
+
+/**
+ * Gọi Free Dictionary API có kiểm soát tốc độ và tự thử lại khi gặp 429
+ */
+async function fetchDictionaryInfo(word) {
+  const cleanWord = normalizeLookupWord(word);
+  if (!cleanWord) return null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`,
+        { signal: AbortSignal.timeout(6000) }
+      );
+      if (res.status === 429) {
+        await sleep(1800 * (attempt + 1));
+        continue;
+      }
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) return null;
+
+      const entry = data[0];
+      let ipaUS = entry.phonetic || null;
+      let ipaUK = null;
+
+      if (Array.isArray(entry.phonetics)) {
+        for (const p of entry.phonetics) {
+          if (p.text) {
+            if (!ipaUS) ipaUS = p.text;
+            if (p.audio && p.audio.includes('-us')) ipaUS = p.text;
+            if (p.audio && p.audio.includes('-uk')) ipaUK = p.text;
+          }
+        }
+      }
+
+      let exampleSentence = null;
+      const synonyms = new Set();
+      const antonyms = new Set();
+
+      if (Array.isArray(entry.meanings)) {
+        for (const m of entry.meanings) {
+          if (Array.isArray(m.synonyms)) m.synonyms.slice(0, 4).forEach((s) => synonyms.add(s));
+          if (Array.isArray(m.antonyms)) m.antonyms.slice(0, 4).forEach((a) => antonyms.add(a));
+          if (Array.isArray(m.definitions)) {
+            for (const d of m.definitions) {
+              if (!exampleSentence && d.example) {
+                exampleSentence = formatExampleSentence(d.example);
+              }
             }
           }
         }
       }
-    }
 
-    return {
-      phonetic_primary: ipaUS,
-      phonetic_secondary: ipaUK || ipaUS,
-      example_sentence: exampleSentence,
-      synonyms: Array.from(synonyms).slice(0, 5),
-      antonyms: Array.from(antonyms).slice(0, 5),
-    };
+      return {
+        phonetic_primary: ipaUS,
+        phonetic_secondary: ipaUK || ipaUS,
+        example_sentence: exampleSentence,
+        synonyms: Array.from(synonyms).slice(0, 5),
+        antonyms: Array.from(antonyms).slice(0, 5),
+      };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Fallback cuối cùng lấy câu ví dụ song ngữ Anh-Việt thật từ Tatoeba
+ */
+async function fetchTatoebaExample(word) {
+  const cleanWord = normalizeLookupWord(word);
+  if (!cleanWord) return null;
+
+  try {
+    const url = `https://tatoeba.org/en/api_v0/search?from=eng&to=vie&query=${encodeURIComponent(cleanWord)}&orphans=no&sort=relevance`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const first = data?.results?.[0];
+    if (first && first.text) {
+      const viTrans = first.translations?.flat()?.[0]?.text || '';
+      return {
+        example_sentence: formatExampleSentence(first.text),
+        example_meaning_vi: viTrans.trim(),
+      };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-// Dịch tự động sang Tiếng Việt (Nghĩa của từ & Nghĩa câu ví dụ)
-async function translateToVietnamese(text) {
+/**
+ * Dịch đơn lẻ 1 đoạn text sang Tiếng Việt (có retry khi 429)
+ */
+async function translateSingle(text) {
   if (!text) return '';
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return '';
-    const data = await res.json();
-    return data[0].map((item) => item[0]).join('');
-  } catch {
-    return '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(text)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (res.status === 429) {
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      if (!res.ok) return '';
+      const data = await res.json();
+      return data[0].map((item) => item[0]).join('').trim();
+    } catch {
+      await sleep(500);
+    }
   }
+  return '';
 }
 
-async function processCard(card) {
-  // Điều kiện bỏ qua (skip) khi chạy lại script:
-  // Nếu thẻ đã có đủ meaning_vi, phonetic_primary và đã từng xử lý trường image_url (card.image_url !== undefined)
-  if (
-    card.meaning_vi &&
-    card.meaning_vi.trim() !== '' &&
-    card.phonetic_primary &&
-    card.image_url !== undefined
-  ) {
-    return false;
+/**
+ * Dịch hàng loạt theo lô (batch) ngăn cách bằng ký tự xuống dòng để cực nhanh và tránh 429
+ */
+async function translateBatch(textList) {
+  if (!textList || textList.length === 0) return [];
+  if (textList.length === 1) {
+    return [await translateSingle(textList[0])];
   }
 
-  const hasMeaning = Boolean(card.meaning_vi && card.meaning_vi.trim() !== '');
-  const hasIpa = Boolean(card.phonetic_primary);
-  const hasImageChecked = card.image_url !== undefined;
-  const queryText = card.sense_note ? `${card.word} (${card.sense_note})` : card.word;
-  const needImage = shouldFetchImage(card.part_of_speech);
+  // Làm sạch ký tự xuống dòng bên trong từng item để không làm lệch số dòng
+  const sanitized = textList.map((t) => String(t).replace(/[\r\n]+/g, ' ').trim());
+  const joined = sanitized.join('\n');
 
-  // Gọi fetchWikipediaImage song song trong Promise.all cùng fetchDictionaryInfo và translateToVietnamese
-  const [dictInfo, meaningVi, imageUrl] = await Promise.all([
-    hasIpa && card.example_sentence ? Promise.resolve(null) : fetchDictionaryInfo(card.word),
-    hasMeaning ? Promise.resolve(card.meaning_vi) : translateToVietnamese(queryText),
-    hasImageChecked
-      ? Promise.resolve(card.image_url)
-      : needImage
-        ? fetchWikipediaImage(card.word, card.sense_note)
-        : Promise.resolve(null),
-  ]);
-
-  card.meaning_vi = meaningVi || card.word;
-  card.image_url = imageUrl ?? null;
-
-  if (dictInfo) {
-    card.phonetic_primary = dictInfo.phonetic_primary;
-    card.phonetic_secondary = dictInfo.phonetic_secondary;
-    if (dictInfo.example_sentence) {
-      card.example_sentence = dictInfo.example_sentence;
-      card.example_meaning_vi = await translateToVietnamese(dictInfo.example_sentence);
-    }
-    if (card.language_metadata) {
-      card.language_metadata.synonyms = dictInfo.synonyms;
-      card.language_metadata.antonyms = dictInfo.antonyms;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(joined)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (res.status === 429) {
+        await sleep(2000 * (attempt + 1));
+        continue;
+      }
+      if (!res.ok) break;
+      const data = await res.json();
+      const translatedFull = data[0].map((item) => item[0]).join('');
+      const lines = translatedFull.split('\n').map((l) => l.trim());
+      if (lines.length === sanitized.length) {
+        return lines;
+      }
+      break;
+    } catch {
+      await sleep(500);
     }
   }
 
-  if (!card.example_sentence) {
-    card.example_sentence = `This is an example sentence with the word "${card.word}".`;
-    card.example_meaning_vi = `Đây là câu ví dụ với từ "${card.word}" (${card.meaning_vi}).`;
+  // Nếu Google gộp/tách dòng bị lệch số lượng thì chia nhỏ hơn để dịch từng item
+  const fallbackResults = [];
+  for (let i = 0; i < sanitized.length; i++) {
+    fallbackResults.push(await translateSingle(sanitized[i]));
+    await sleep(120);
   }
-
-  return true;
+  return fallbackResults;
 }
 
 async function runEnrich() {
@@ -334,40 +513,252 @@ async function runEnrich() {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // BƯỚC 1: Đồng bộ ảnh minh họa Wikipedia nếu có từ nào chưa xử lý image_url
+  // -------------------------------------------------------------------------
   const cardsNeedingImage = allCards.filter((c) => c.image_url === undefined);
   if (cardsNeedingImage.length > 0) {
-    console.log(
-      `🖼️ Đang đồng bộ ảnh minh họa từ Wikipedia cho ${cardsNeedingImage.length} từ vựng...`
-    );
+    console.log(`🖼️ Đang đồng bộ ảnh minh họa từ Wikipedia cho ${cardsNeedingImage.length} từ...`);
     await prefetchWikipediaBatchCache(cardsNeedingImage);
+    for (const card of cardsNeedingImage) {
+      card.image_url = shouldFetchImage(card.part_of_speech)
+        ? (await fetchWikipediaImage(card.word, card.sense_note)) ?? null
+        : null;
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
   }
 
-  console.log(
-    `🚀 Bắt đầu tự động điền IPA, Nghĩa Tiếng Việt, Câu ví dụ & Ảnh minh họa cho ${allCards.length} từ...`
-  );
-  let processed = 0;
-  let updatedCount = 0;
+  // -------------------------------------------------------------------------
+  // BƯỚC 2: Nạp từ điển IPA (125.000+ từ) và Wordset (107.000+ từ)
+  // -------------------------------------------------------------------------
+  const [{ usMap, ukMap }, wordsetDict] = await Promise.all([
+    loadIpaDictionaries(),
+    loadWordsetDictionary(),
+  ]);
 
-  for (let i = 0; i < allCards.length; i += CONCURRENCY) {
-    const batch = allCards.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((card) => processCard(card)));
-    processed += batch.length;
-    updatedCount += results.filter(Boolean).length;
+  let ipaFilled = 0;
+  let exampleFromWordset = 0;
 
-    process.stdout.write(
-      `\r⏳ Tiến độ: ${processed}/${allCards.length} từ (Đã cập nhật mới: ${updatedCount})...`
-    );
+  for (let i = 0; i < allCards.length; i++) {
+    const card = allCards[i];
+    const cleanWord = normalizeLookupWord(card.word);
 
-    if (updatedCount > 0 && processed % SAVE_INTERVAL < CONCURRENCY) {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+    // 2A. Điền IPA chuẩn US & UK nếu thẻ chưa có IPA thật
+    if (!hasRealIpa(card)) {
+      const ipaUS = lookupIpaFromMap(cleanWord, usMap, ukMap);
+      const ipaUK = lookupIpaFromMap(cleanWord, ukMap, usMap);
+      if (ipaUS) {
+        card.phonetic_primary = ipaUS;
+        card.phonetic_secondary = ipaUK || ipaUS;
+        ipaFilled++;
+      }
+    }
+
+    // 2B. Điền câu ví dụ & từ đồng nghĩa từ Wordset nếu chưa có ví dụ thật
+    if (!hasRealExample(card)) {
+      const entry = wordsetDict.get(cleanWord);
+      if (entry && Array.isArray(entry.meanings)) {
+        let pickedExample = '';
+        const syns = new Set(card.language_metadata?.synonyms || []);
+
+        for (let j = 0; j < entry.meanings.length; j++) {
+          const m = entry.meanings[j];
+          if (!pickedExample && m.example) {
+            pickedExample = formatExampleSentence(m.example);
+          }
+          if (Array.isArray(m.synonyms)) {
+            for (const s of m.synonyms.slice(0, 4)) syns.add(s);
+          }
+        }
+
+        if (pickedExample) {
+          card.example_sentence = pickedExample;
+          card.example_meaning_vi = ''; // Đánh dấu cần dịch lại câu ví dụ mới
+          exampleFromWordset++;
+        }
+        if (card.language_metadata && syns.size > 0) {
+          card.language_metadata.synonyms = Array.from(syns).slice(0, 5);
+        }
+      }
     }
   }
 
-  const totalWithImages = allCards.filter((c) => Boolean(c.image_url)).length;
-  fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
   console.log(
-    `\n✅ Hoàn tất làm giàu dữ liệu cho ${allCards.length} từ (Tổng số từ có ảnh minh họa: ${totalWithImages})! File đã được lưu tại: ${DATA_FILE}`
+    `✅ Sau bước từ điển Offline: Đã bổ sung ${ipaFilled} IPA chuẩn, ${exampleFromWordset} câu ví dụ thật từ Wordset.`
   );
+  fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+
+  // -------------------------------------------------------------------------
+  // BƯỚC 3: Với những từ còn thiếu ví dụ thật hoặc IPA, gọi Free Dictionary API + Tatoeba
+  // -------------------------------------------------------------------------
+  const cardsStillNeedingDict = [];
+  for (let i = 0; i < allCards.length; i++) {
+    const c = allCards[i];
+    if (!hasRealIpa(c) || !hasRealExample(c)) {
+      cardsStillNeedingDict.push(c);
+    }
+  }
+
+  if (cardsStillNeedingDict.length > 0) {
+    console.log(
+      `🌐 Còn ${cardsStillNeedingDict.length} từ cần tìm thêm ví dụ/IPA qua DictionaryAPI & Tatoeba...`
+    );
+    const dictCache = new Map();
+    const CONCURRENCY = 4;
+
+    for (let i = 0; i < cardsStillNeedingDict.length; i += CONCURRENCY) {
+      const batch = cardsStillNeedingDict.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (card) => {
+          const key = normalizeLookupWord(card.word);
+          if (!dictCache.has(key)) {
+            let info = await fetchDictionaryInfo(card.word);
+            if (!info || !info.example_sentence) {
+              const tato = await fetchTatoebaExample(card.word);
+              if (tato && tato.example_sentence) {
+                info = {
+                  ...(info || {}),
+                  example_sentence: tato.example_sentence,
+                  example_meaning_vi: tato.example_meaning_vi,
+                };
+              }
+            }
+            dictCache.set(key, info);
+          }
+
+          const cached = dictCache.get(key);
+          if (cached) {
+            if (!hasRealIpa(card) && cached.phonetic_primary) {
+              card.phonetic_primary = cached.phonetic_primary;
+              card.phonetic_secondary = cached.phonetic_secondary || cached.phonetic_primary;
+            }
+            if (!hasRealExample(card) && cached.example_sentence) {
+              card.example_sentence = cached.example_sentence;
+              card.example_meaning_vi = cached.example_meaning_vi || '';
+            }
+            if (card.language_metadata) {
+              if (cached.synonyms?.length && (!card.language_metadata.synonyms || card.language_metadata.synonyms.length === 0)) {
+                card.language_metadata.synonyms = cached.synonyms;
+              }
+              if (cached.antonyms?.length && (!card.language_metadata.antonyms || card.language_metadata.antonyms.length === 0)) {
+                card.language_metadata.antonyms = cached.antonyms;
+              }
+            }
+          }
+        })
+      );
+
+      process.stdout.write(
+        `\r⏳ Tìm ví dụ/IPA online: ${Math.min(i + CONCURRENCY, cardsStillNeedingDict.length)}/${cardsStillNeedingDict.length} từ...`
+      );
+      if ((i + CONCURRENCY) % SAVE_INTERVAL < CONCURRENCY) {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+      }
+      await sleep(160);
+    }
+    console.log('');
+    fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+  }
+
+  // -------------------------------------------------------------------------
+  // BƯỚC 4: Dịch hàng loạt Nghĩa tiếng Việt (meaning_vi) cho các từ còn thiếu
+  // -------------------------------------------------------------------------
+  const cardsNeedingMeaning = [];
+  for (let i = 0; i < allCards.length; i++) {
+    if (!hasRealMeaning(allCards[i])) {
+      cardsNeedingMeaning.push(allCards[i]);
+    }
+  }
+
+  if (cardsNeedingMeaning.length > 0) {
+    console.log(`🇻🇳 Đang dịch nghĩa tiếng Việt theo lô cho ${cardsNeedingMeaning.length} từ...`);
+    const BATCH_SIZE = 25;
+    for (let i = 0; i < cardsNeedingMeaning.length; i += BATCH_SIZE) {
+      const batch = cardsNeedingMeaning.slice(i, i + BATCH_SIZE);
+      const queries = batch.map((card) =>
+        card.sense_note
+          ? `${card.word.split(',')[0].trim()} (${card.sense_note})`
+          : card.word.split(',')[0].trim()
+      );
+      const translated = await translateBatch(queries);
+
+      for (let j = 0; j < batch.length; j++) {
+        if (translated[j] && translated[j].trim() !== '') {
+          batch[j].meaning_vi = translated[j].trim();
+        }
+      }
+
+      process.stdout.write(
+        `\r⏳ Dịch nghĩa từ: ${Math.min(i + BATCH_SIZE, cardsNeedingMeaning.length)}/${cardsNeedingMeaning.length} từ...`
+      );
+      await sleep(220);
+    }
+    console.log('');
+    fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+  }
+
+  // -------------------------------------------------------------------------
+  // BƯỚC 5: Dịch hàng loạt Nghĩa câu ví dụ (example_meaning_vi) cho các câu mới
+  // -------------------------------------------------------------------------
+  const cardsNeedingExVi = [];
+  for (let i = 0; i < allCards.length; i++) {
+    const c = allCards[i];
+    if (
+      c.example_sentence &&
+      (!c.example_meaning_vi || c.example_meaning_vi.trim() === '' || c.example_meaning_vi.startsWith('Đây là câu ví dụ với từ'))
+    ) {
+      cardsNeedingExVi.push(c);
+    }
+  }
+
+  if (cardsNeedingExVi.length > 0) {
+    console.log(`📝 Đang dịch nghĩa tiếng Việt cho ${cardsNeedingExVi.length} câu ví dụ...`);
+    const BATCH_SIZE = 15;
+    for (let i = 0; i < cardsNeedingExVi.length; i += BATCH_SIZE) {
+      const batch = cardsNeedingExVi.slice(i, i + BATCH_SIZE);
+      const queries = batch.map((c) => c.example_sentence);
+      const translated = await translateBatch(queries);
+
+      for (let j = 0; j < batch.length; j++) {
+        if (translated[j] && translated[j].trim() !== '') {
+          batch[j].example_meaning_vi = translated[j].trim();
+        }
+      }
+
+      process.stdout.write(
+        `\r⏳ Dịch câu ví dụ: ${Math.min(i + BATCH_SIZE, cardsNeedingExVi.length)}/${cardsNeedingExVi.length} câu...`
+      );
+      if ((i + BATCH_SIZE) % 150 < BATCH_SIZE) {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+      }
+      await sleep(220);
+    }
+    console.log('');
+  }
+
+  // Lưu file lần cuối và báo cáo tổng kết chất lượng thực tế
+  fs.writeFileSync(DATA_FILE, JSON.stringify(rawData, null, 2), 'utf-8');
+
+  let finalRealMeaning = 0;
+  let finalRealIpa = 0;
+  let finalRealExample = 0;
+  let finalWithImage = 0;
+
+  for (let i = 0; i < allCards.length; i++) {
+    const c = allCards[i];
+    if (hasRealMeaning(c)) finalRealMeaning++;
+    if (hasRealIpa(c)) finalRealIpa++;
+    if (hasRealExample(c)) finalRealExample++;
+    if (c.image_url) finalWithImage++;
+  }
+
+  console.log('\n==================================================');
+  console.log(`🎉 HOÀN TẤT BỔ SUNG DỮ LIỆU THẬT CHO ${allCards.length} TỪ!`);
+  console.log(`- Có nghĩa tiếng Việt thật: ${finalRealMeaning}/${allCards.length}`);
+  console.log(`- Có phiên âm IPA chuẩn từ điển: ${finalRealIpa}/${allCards.length}`);
+  console.log(`- Có câu ví dụ thật: ${finalRealExample}/${allCards.length}`);
+  console.log(`- Có ảnh minh họa Wikipedia: ${finalWithImage}/${allCards.length}`);
+  console.log('==================================================');
 }
 
 runEnrich();
