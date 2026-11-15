@@ -1,1 +1,11 @@
-// Placeholder file: frontend-web/src/pages/StudySessionPage.jsx
+import React from 'react';
+
+export default function StudySessionPage() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 className="text-lg font-bold">Phiên học Flashcard SRS (Sẽ hoàn thiện ở Lát cắt 4)</h2>
+      </div>
+    </div>
+  );
+}
