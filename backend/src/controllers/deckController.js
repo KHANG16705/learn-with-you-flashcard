@@ -2,7 +2,6 @@ import { pool } from '../config/db.js';
 
 /**
  * Hàm phụ: Chuyển dữ liệu cột JSON trong MySQL sang mảng/object JavaScript an toàn
- * Tại sao cần hàm này: Tùy cấu hình MySQL, cột JSON có thể trả về dạng chuỗi hoặc object sẵn
  */
 function parseJsonSafely(rawValue, fallbackValue) {
   if (!rawValue) {
@@ -25,30 +24,83 @@ function parseTagsSafely(rawTags) {
 }
 
 /**
+ * Hàm phụ: Xác định Nhóm Chủ đề lớn (category_id & category_name) từ tiêu đề Unit
+ */
+function inferUnitCategory(unitTitle = '') {
+  const title = String(unitTitle);
+
+  if (
+    title.includes('Gia đình') ||
+    title.includes('Nhà cửa') ||
+    title.includes('Trang phục') ||
+    title.includes('Ẩm thực')
+  ) {
+    return {
+      category_id: 'life_people',
+      category_name: '👨‍👩‍👧‍👦 Đời sống, Gia đình & Ẩm thực',
+    };
+  }
+
+  if (
+    title.includes('Du lịch') ||
+    title.includes('Đô thị') ||
+    title.includes('Nghệ thuật') ||
+    title.includes('Thể thao')
+  ) {
+    return {
+      category_id: 'travel_leisure',
+      category_name: '✈️ Di chuyển, Địa điểm & Giải trí',
+    };
+  }
+
+  if (
+    title.includes('Công việc') ||
+    title.includes('Kinh doanh') ||
+    title.includes('Giáo dục')
+  ) {
+    return {
+      category_id: 'work_education',
+      category_name: '💼 Công việc, Kinh tế & Giáo dục',
+    };
+  }
+
+  if (
+    title.includes('Cơ thể') ||
+    title.includes('Thiên nhiên') ||
+    title.includes('Khoa học') ||
+    title.includes('Xã hội') ||
+    title.includes('Thời gian')
+  ) {
+    return {
+      category_id: 'nature_science_society',
+      category_name: '🌿 Tự nhiên, Khoa học, Y tế & Xã hội',
+    };
+  }
+
+  return {
+    category_id: 'mind_actions_grammar',
+    category_name: '🧠 Tư duy, Cảm xúc, Hành động & Ngữ pháp',
+  };
+}
+
+/**
  * 1. Lấy danh sách bộ thẻ ở Trang Khám Phá kèm số liệu Banner Nhắc Ôn Tập Hôm Nay
  * Đường dẫn: GET /api/v1/decks?lang=EN&tag=#a1&search=...
  */
 export async function getCatalogDecks(req, res) {
   try {
-    // Bước 1: Lấy mã người dùng đang đăng nhập và các tham số lọc trên thanh địa chỉ (URL)
     const userId = req.user.id;
 
-    // Xác định ngôn ngữ cần lấy ('EN' là Tiếng Anh, 'ZH' là Tiếng Trung)
     let selectedLang = req.user.preferred_lang || 'EN';
     if (req.query.lang === 'EN' || req.query.lang === 'ZH') {
       selectedLang = req.query.lang;
     }
 
-    // Lấy mã tag muốn lọc (ví dụ: '#a1', '#oxford') và từ khóa tìm kiếm (nếu có)
     const filterTag = req.query.tag ? String(req.query.tag).trim().toLowerCase() : '';
     const searchKeyword = req.query.search
       ? String(req.query.search).trim().toLowerCase()
       : '';
 
-    // =========================================================================
-    // Bước 2: Truy vấn 1 - Lấy danh sách các bộ thẻ hệ thống (is_system = 1)
-    // Kết hợp (LEFT JOIN) với bảng deck_cards và user_vocab_progress để đếm tiến độ học của User
-    // =========================================================================
     const deckSql = `
       SELECT
         d.id,
@@ -83,27 +135,22 @@ export async function getCatalogDecks(req, res) {
     `;
 
     const [deckRows] = await pool.execute(deckSql, [userId, selectedLang]);
-
-    // Bước 3: Duyệt qua từng bộ thẻ bằng vòng lặp for để định dạng số liệu và lọc theo tag / từ khóa
     const filteredDecks = [];
 
     for (let i = 0; i < deckRows.length; i++) {
       const row = deckRows[i];
       const tagsArray = parseTagsSafely(row.tags);
 
-      // Chuyển các số đếm từ MySQL sang kiểu số (Number) để tính toán không bị lỗi
       const totalCards = Number(row.counted_cards || row.saved_total_cards || 0);
       const learnedCount = Number(row.learned_count || 0);
       const masteredCount = Number(row.mastered_count || 0);
       const dueCount = Number(row.due_count || 0);
 
-      // Tính phần trăm số từ đã học trong bộ thẻ (từ 0% đến 100%)
       let progressPercent = 0;
       if (totalCards > 0) {
         progressPercent = Math.round((learnedCount / totalCards) * 100);
       }
 
-      // Kiểm tra điều kiện lọc theo Tag (nếu người dùng có chọn tag khác 'all')
       if (filterTag && filterTag !== 'all') {
         const normalizedFilterTag = filterTag.startsWith('#') ? filterTag : `#${filterTag}`;
         let hasMatchingTag = false;
@@ -115,13 +162,11 @@ export async function getCatalogDecks(req, res) {
           }
         }
 
-        // Nếu bộ thẻ không có tag đang chọn thì bỏ qua, chuyển sang bộ thẻ tiếp theo
         if (!hasMatchingTag) {
           continue;
         }
       }
 
-      // Kiểm tra điều kiện lọc theo từ khóa tìm kiếm (nếu người dùng gõ ô tìm kiếm)
       if (searchKeyword) {
         const titleViText = String(row.title_vi || '').toLowerCase();
         const titleTargetText = String(row.title_target || '').toLowerCase();
@@ -137,7 +182,6 @@ export async function getCatalogDecks(req, res) {
         }
       }
 
-      // Đưa bộ thẻ hợp lệ vào danh sách kết quả
       filteredDecks.push({
         id: row.id,
         slug: row.slug,
@@ -155,10 +199,6 @@ export async function getCatalogDecks(req, res) {
       });
     }
 
-    // =========================================================================
-    // Bước 4: Truy vấn 2 - Tính số liệu cho "Banner Nhắc Ôn Tập Hôm Nay" (dailySummary)
-    // Đếm trong bảng user_vocab_progress các từ thuộc ngôn ngữ đang chọn
-    // =========================================================================
     const summarySql = `
       SELECT
         SUM(
@@ -198,7 +238,6 @@ export async function getCatalogDecks(req, res) {
       totalMastered: Number(summaryRow.total_mastered || 0),
     };
 
-    // Bước 5: Trả kết quả JSON về cho giao diện Frontend
     return res.status(200).json({
       success: true,
       data: {
@@ -217,7 +256,8 @@ export async function getCatalogDecks(req, res) {
 }
 
 /**
- * 2. Lấy tổng quan Bộ thẻ, Thanh tiến độ 4 màu và Danh sách các Unit 20 từ
+ * 2. Lấy tổng quan Bộ thẻ, Thanh tiến độ 4 màu, Danh sách các Unit theo Nhóm Chủ đề
+ *    và gợi ý Unit tiếp theo nên học (recommended_unit)
  * Đường dẫn: GET /api/v1/decks/:slug/overview
  */
 export async function getDeckOverview(req, res) {
@@ -229,18 +269,14 @@ export async function getDeckOverview(req, res) {
     let unitWhereClause = '';
     let unitQueryParams = [];
 
-    // =========================================================================
-    // Bước 1: Kiểm tra xem người dùng đang xem 1 bộ thẻ cụ thể hay trọn bộ 3.004 từ Oxford
-    // =========================================================================
     if (slug === 'all-oxford-3000') {
-      // Trường hợp đặc biệt: Tổng hợp cả 4 bộ Oxford 3000 (A1, A2, B1, B2)
       deckInfo = {
         id: 0,
         slug: 'all-oxford-3000',
         title_vi: 'Trọn Bộ Từ Vựng Oxford 3000 (A1 - B2)',
         title_target: 'The Oxford 3000™ Complete Vocabulary (A1 - B2)',
         description:
-          'Tổng hợp toàn bộ 3.004 từ vựng cốt lõi tiếng Anh thuộc cả 4 cấp độ CEFR (A1, A2, B1, B2).',
+          'Tổng hợp toàn bộ 3.004 từ vựng cốt lõi tiếng Anh thuộc cả 4 cấp độ CEFR (A1, A2, B1, B2) chia theo 5 Nhóm Chủ đề lớn.',
         language: 'EN',
         level_tag: 'A1-B2',
         tags: ['#oxford', '#a1', '#a2', '#b1', '#b2', '#common'],
@@ -251,7 +287,6 @@ export async function getDeckOverview(req, res) {
       unitWhereClause = `WHERE d.slug LIKE 'oxford-3000-%' AND d.is_deleted = 0`;
       unitQueryParams = [userId];
     } else {
-      // Trường hợp thông thường: Tìm đúng bộ thẻ theo slug (ví dụ: oxford-3000-a1)
       const findDeckSql = `
         SELECT
           id,
@@ -296,13 +331,6 @@ export async function getDeckOverview(req, res) {
       unitQueryParams = [userId, deckInfo.id];
     }
 
-    // =========================================================================
-    // Bước 2: Lấy danh sách toàn bộ các Unit kèm 4 chỉ số màu của từng Unit
-    // - unseen_count (Chưa học): uvp.id IS NULL
-    // - learning_count (Đang học): status IN ('LEARNING', 'REVIEW') và chưa tới giờ ôn
-    // - due_today_count (Cần ôn hôm nay): status IN ('LEARNING', 'REVIEW') và next_review_at <= NOW()
-    // - mastered_count (Đã thuộc): status IN ('MASTERED', 'IGNORED')
-    // =========================================================================
     const unitsSql = `
       SELECT
         du.id,
@@ -364,10 +392,6 @@ export async function getDeckOverview(req, res) {
 
     const [unitRows] = await pool.execute(unitsSql, unitQueryParams);
 
-    // =========================================================================
-    // Bước 3: Duyệt vòng lặp for qua các Unit để chuẩn hóa dữ liệu và cộng dồn
-    // thành bảng thống kê 4 màu tổng (stats) của toàn bộ thẻ
-    // =========================================================================
     const units = [];
     let totalCardsAll = 0;
     let unseenCountAll = 0;
@@ -392,6 +416,12 @@ export async function getDeckOverview(req, res) {
       masteredCountAll += uMastered;
       weakCountAll += uWeak;
 
+      const categoryInfo = inferUnitCategory(u.title);
+      let completionPercent = 0;
+      if (uTotal > 0) {
+        completionPercent = Math.round((uMastered / uTotal) * 100);
+      }
+
       units.push({
         id: u.id,
         deck_id: u.deck_id,
@@ -399,16 +429,67 @@ export async function getDeckOverview(req, res) {
         deck_level_tag: u.deck_level_tag,
         unit_number: Number(u.unit_number),
         title: u.title,
+        category_id: categoryInfo.category_id,
+        category_name: categoryInfo.category_name,
         total_cards: uTotal,
         unseen_count: uUnseen,
         learning_count: uLearning,
         due_today_count: uDue,
         mastered_count: uMastered,
         weak_count: uWeak,
+        completion_percent: completionPercent,
       });
     }
 
-    // Cập nhật lại tổng số thẻ thực tế cho thông tin bộ thẻ
+    // Tìm Unit gợi ý nên học tiếp theo (recommended_unit):
+    // 1. Ưu tiên Unit có thẻ đến hạn cần ôn hôm nay (due_today_count > 0)
+    // 2. Tiếp theo là Unit đang học dở (mastered_count > 0 nhưng chưa thuộc hết)
+    // 3. Tiếp theo là Unit đầu tiên chưa thuộc hết (mastered_count < total_cards)
+    let recommendedUnit = null;
+
+    for (let i = 0; i < units.length; i++) {
+      if (units[i].due_today_count > 0) {
+        recommendedUnit = {
+          ...units[i],
+          recommend_reason: `Có ${units[i].due_today_count} từ đến hạn cần ôn tập hôm nay`,
+        };
+        break;
+      }
+    }
+
+    if (!recommendedUnit) {
+      for (let i = 0; i < units.length; i++) {
+        const u = units[i];
+        const touched = u.mastered_count + u.learning_count + u.due_today_count;
+        if (touched > 0 && u.mastered_count < u.total_cards) {
+          recommendedUnit = {
+            ...u,
+            recommend_reason: `Đang học dở (${u.mastered_count}/${u.total_cards} từ đã thuộc)`,
+          };
+          break;
+        }
+      }
+    }
+
+    if (!recommendedUnit) {
+      for (let i = 0; i < units.length; i++) {
+        if (units[i].mastered_count < units[i].total_cards) {
+          recommendedUnit = {
+            ...units[i],
+            recommend_reason: 'Bài học tiếp theo trong lộ trình của bạn',
+          };
+          break;
+        }
+      }
+    }
+
+    if (!recommendedUnit && units.length > 0) {
+      recommendedUnit = {
+        ...units[0],
+        recommend_reason: 'Bạn đã hoàn thành toàn bộ lộ trình! Hãy ôn tập lại từ đầu.',
+      };
+    }
+
     deckInfo.total_cards = totalCardsAll;
     deckInfo.total_units = units.length;
 
@@ -421,16 +502,17 @@ export async function getDeckOverview(req, res) {
       weak_count: weakCountAll,
     };
 
-    // Bước 4: Trả kết quả JSON về cho Frontend
     return res.status(200).json({
       success: true,
       data: {
         deck: deckInfo,
         stats: stats,
+        recommended_unit: recommendedUnit,
         units: units,
       },
       deck: deckInfo,
       stats: stats,
+      recommended_unit: recommendedUnit,
       units: units,
     });
   } catch (error) {
@@ -443,8 +525,9 @@ export async function getDeckOverview(req, res) {
 }
 
 /**
- * 3. Lấy danh sách các từ vựng trong 1 Unit (20 từ) HOẶC toàn bộ từ của Bộ thẻ (unitId = 'all')
- * Đường dẫn: GET /api/v1/decks/:slug/units/:unitId/cards?filter=all&search=...
+ * 3. Lấy danh sách các từ vựng trong 1 Unit HOẶC toàn bộ từ của Bộ thẻ (unitId = 'all')
+ *    Hỗ trợ lọc theo Trạng thái (filter) và Độ khó (difficulty: 'easy' | 'medium' | 'hard')
+ * Đường dẫn: GET /api/v1/decks/:slug/units/:unitId/cards?filter=all&difficulty=all&search=...
  */
 export async function getUnitCards(req, res) {
   try {
@@ -452,16 +535,13 @@ export async function getUnitCards(req, res) {
     const slug = String(req.params.slug || '').trim();
     const unitIdParam = String(req.params.unitId || 'all').trim();
     const filter = String(req.query.filter || 'all').trim().toLowerCase();
+    const difficultyFilter = String(req.query.difficulty || 'all').trim().toUpperCase();
     const searchKeyword = String(req.query.search || '').trim().toLowerCase();
 
-    // =========================================================================
-    // Bước 1: Xác định điều kiện lọc theo Bộ thẻ (slug) và theo Chặng (unitId)
-    // =========================================================================
     let whereSql = '';
     let queryParams = [];
 
     if (slug === 'all-oxford-3000') {
-      // Nếu lấy từ trọn bộ 3.004 từ Oxford 3000
       if (unitIdParam === 'all') {
         whereSql = `WHERE d.slug LIKE 'oxford-3000-%' AND d.is_deleted = 0 AND dc.is_deleted = 0`;
         queryParams = [userId];
@@ -471,7 +551,6 @@ export async function getUnitCards(req, res) {
         queryParams = [userId, numericUnitId];
       }
     } else {
-      // Kiểm tra bộ thẻ theo slug có tồn tại không
       const [deckRows] = await pool.execute(
         `SELECT id, slug, title_vi FROM decks WHERE slug = ? AND is_deleted = 0 LIMIT 1`,
         [slug]
@@ -487,11 +566,9 @@ export async function getUnitCards(req, res) {
       const deckId = deckRows[0].id;
 
       if (unitIdParam === 'all') {
-        // Lấy toàn bộ tất cả các từ trong bộ thẻ này (ví dụ cả 902 từ của A1)
         whereSql = `WHERE dc.deck_id = ? AND dc.is_deleted = 0`;
         queryParams = [userId, deckId];
       } else {
-        // Cho phép truyền id của bảng deck_units HOẶC số thứ tự unit_number (1, 2, 3...)
         const numericUnit = Number(unitIdParam);
         const [unitLookup] = await pool.execute(
           `SELECT id FROM deck_units WHERE deck_id = ? AND (id = ? OR unit_number = ?) ORDER BY (id = ?) DESC LIMIT 1`,
@@ -511,13 +588,11 @@ export async function getUnitCards(req, res) {
       }
     }
 
-    // =========================================================================
-    // Bước 2: Truy vấn lấy đầy đủ thông tin từ vựng kết hợp trạng thái SRS của User
-    // =========================================================================
     const cardsSql = `
       SELECT
         dc.id AS deck_card_id,
         dc.deck_id,
+        d.level_tag,
         dc.unit_id,
         du.unit_number,
         du.title AS unit_title,
@@ -566,23 +641,24 @@ export async function getUnitCards(req, res) {
     `;
 
     const [cardRows] = await pool.execute(cardsSql, queryParams);
-
-    // =========================================================================
-    // Bước 3: Duyệt vòng lặp for để định dạng từng từ vựng và lọc theo filter / search
-    // =========================================================================
     const filteredCards = [];
 
     for (let i = 0; i < cardRows.length; i++) {
       const row = cardRows[i];
+      const metadata = parseJsonSafely(row.language_metadata, {});
 
-      // Nếu chưa có bản ghi trong user_vocab_progress thì trạng thái là 'UNSEEN' (Chưa học)
       const status = row.user_status ? String(row.user_status) : 'UNSEEN';
       const isDueToday = Number(row.is_due_today || 0) === 1;
       const lapses = Number(row.lapses || 0);
       const isMastered = status === 'MASTERED' || status === 'IGNORED';
       const isWeak = lapses >= 3 && !isMastered;
 
-      // Xác định nhóm màu 4 trạng thái cho từng thẻ để Frontend dễ tô màu
+      // Lấy thông tin Độ khó & Chủ đề từ language_metadata
+      const difficultyLevel = String(metadata.difficulty_level || 'MEDIUM').toUpperCase();
+      const difficultyScore = Number(metadata.difficulty_score || 3);
+      const topicCategory =
+        metadata.topic_category || inferUnitCategory(row.unit_title).category_name;
+
       let colorState = 'unseen';
       if (isMastered) {
         colorState = 'mastered';
@@ -592,7 +668,7 @@ export async function getUnitCards(req, res) {
         colorState = 'learning';
       }
 
-      // Kiểm tra điều kiện lọc theo trạng thái (filter: 'all' | 'unseen' | 'learning' | 'due' | 'mastered' | 'weak')
+      // Lọc theo trạng thái nhớ (filter)
       if (filter === 'unseen' && status !== 'UNSEEN') {
         continue;
       }
@@ -609,10 +685,18 @@ export async function getUnitCards(req, res) {
         continue;
       }
 
-      // Ưu tiên nghĩa riêng của bộ thẻ (custom_meaning_vi) nếu có, không thì lấy nghĩa gốc (meaning_vi)
+      // Lọc theo Độ khó (difficulty: 'EASY' | 'MEDIUM' | 'HARD')
+      if (
+        difficultyFilter !== 'ALL' &&
+        difficultyFilter !== '' &&
+        difficultyLevel !== difficultyFilter
+      ) {
+        continue;
+      }
+
       const displayMeaningVi = row.custom_meaning_vi || row.meaning_vi || '';
 
-      // Kiểm tra điều kiện tìm kiếm theo từ khóa (search theo từ vựng hoặc nghĩa tiếng Việt)
+      // Lọc theo từ khóa tìm kiếm (search)
       if (searchKeyword !== '') {
         const wordLower = String(row.word || '').toLowerCase();
         const meaningLower = String(displayMeaningVi).toLowerCase();
@@ -625,9 +709,11 @@ export async function getUnitCards(req, res) {
       filteredCards.push({
         deck_card_id: row.deck_card_id,
         deck_id: row.deck_id,
+        level_tag: row.level_tag,
         unit_id: row.unit_id,
         unit_number: row.unit_number ? Number(row.unit_number) : null,
         unit_title: row.unit_title || null,
+        topic_category: topicCategory,
         vocab_id: row.vocab_id,
         order_index: Number(row.order_index || 1),
         language: row.language,
@@ -643,7 +729,9 @@ export async function getUnitCards(req, res) {
         image_url: row.image_url,
         audio_word_url: row.audio_word_url,
         audio_example_url: row.audio_example_url,
-        language_metadata: parseJsonSafely(row.language_metadata, {}),
+        difficulty_level: difficultyLevel,
+        difficulty_score: difficultyScore,
+        language_metadata: metadata,
         distractors: parseJsonSafely(row.distractors, []),
         status: status,
         color_state: colorState,
@@ -659,7 +747,6 @@ export async function getUnitCards(req, res) {
       });
     }
 
-    // Bước 4: Trả danh sách thẻ về cho Frontend
     return res.status(200).json({
       success: true,
       total: filteredCards.length,
@@ -667,6 +754,7 @@ export async function getUnitCards(req, res) {
         slug: slug,
         unit_id: unitIdParam,
         filter: filter,
+        difficulty: difficultyFilter,
         total: filteredCards.length,
         cards: filteredCards,
       },
