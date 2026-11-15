@@ -395,8 +395,35 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : (
-          /* Hiển thị lưới danh sách các bộ thẻ (Deck Grid) */
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Thẻ đặc biệt: Xem Trọn Bộ 3.004 Từ Oxford 3000 (A1 - B2) khi đang ở chế độ Tiếng Anh */}
+            {currentLang === 'EN' && (
+              <div className="bg-gradient-to-r from-indigo-600/10 via-blue-600/10 to-emerald-600/10 dark:from-indigo-900/30 dark:via-blue-900/30 dark:to-emerald-900/30 rounded-2xl p-6 border border-blue-200 dark:border-blue-800/70 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-extrabold bg-blue-600 text-white">
+                    <span>🌟 Trọn Bộ Oxford 3000 (A1 - B2)</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+                    🌟 Trọn Bộ Oxford 3000 (Tất cả 3.004 từ A1 - B2)
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                    Mở xem, nghe phát âm, tìm kiếm nhanh và đánh dấu &ldquo;Đã biết&rdquo; trên toàn bộ 3.004 từ vựng chuẩn Oxford cùng lúc.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/decks/all-oxford-3000')}
+                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <span>Xem trọn bộ 3.004 từ</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Hiển thị lưới danh sách các bộ thẻ (Deck Grid) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredDecks.map((deck) => {
               return (
                 <div
@@ -500,6 +527,7 @@ export default function DashboardPage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </section>

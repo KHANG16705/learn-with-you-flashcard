@@ -191,6 +191,14 @@ export default function App() {
             }
           />
           <Route
+            path="/study/:slug/:mode"
+            element={
+              <ProtectedRoute>
+                <StudySessionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/notebooks"
             element={
               <ProtectedRoute>
