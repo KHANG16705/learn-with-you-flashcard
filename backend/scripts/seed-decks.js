@@ -57,6 +57,10 @@ async function seedDecks() {
         totalDecksInserted++;
         console.log(`\n📦 Đang xử lý Bộ thẻ: ${deck.title_vi} (deck_id = ${deckId}, ${deck.total_units} Units)`);
 
+        // Xóa các chặng Unit cũ của bộ thẻ này trước khi nạp lại danh sách Unit theo Chủ đề mới
+        // (Bảng user_vocab_progress liên kết theo vocab_id nên tiến độ học của User được giữ nguyên 100%)
+        await connection.execute(`DELETE FROM deck_units WHERE deck_id = ?`, [deckId]);
+
         for (const unit of deck.units) {
           // 2. Nạp hoặc cập nhật Chặng 20 từ (Bảng deck_units)
           const [unitResult] = await connection.execute(
