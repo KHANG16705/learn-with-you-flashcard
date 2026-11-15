@@ -7,7 +7,12 @@ import {
   getMe,
   updatePreferences,
 } from '../controllers/authController.js';
-import { getCatalogDecks } from '../controllers/deckController.js';
+import {
+  getCatalogDecks,
+  getDeckOverview,
+  getUnitCards,
+} from '../controllers/deckController.js';
+import { toggleMarkKnown } from '../controllers/studyController.js';
 
 const router = express.Router();
 
@@ -36,10 +41,23 @@ router.patch('/auth/language', authMiddleware, updatePreferences);
 router.patch('/users/me/preferences', authMiddleware, updatePreferences);
 
 // ==========================================
-// 3. NHÓM ĐƯỜNG DẪN BỘ THẺ TỪ VỰNG (CATALOG & DECKS)
+// 3. NHÓM ĐƯỜNG DẪN BỘ THẺ TỪ VỰNG (CATALOG, DECK DETAIL & UNITS)
 // ==========================================
 
 // Lấy danh sách các bộ thẻ kèm tiến độ học và số liệu nhắc ôn tập hôm nay
 router.get('/decks', authMiddleware, getCatalogDecks);
+
+// Lấy tổng quan bộ thẻ, thanh tiến độ 4 màu và danh sách các Unit 20 từ
+router.get('/decks/:slug/overview', authMiddleware, getDeckOverview);
+
+// Lấy danh sách từ vựng trong 1 Unit (20 từ) hoặc toàn bộ từ của bộ thẻ (unitId = 'all')
+router.get('/decks/:slug/units/:unitId/cards', authMiddleware, getUnitCards);
+
+// ==========================================
+// 4. NHÓM ĐƯỜNG DẪN HỌC TẬP & ĐÁNH DẤU TỪ VỰNG (STUDY & SRS)
+// ==========================================
+
+// Đánh dấu hoặc bỏ đánh dấu 1 từ vựng là "Đã biết" (status = 'IGNORED' / 'UNSEEN')
+router.patch('/study/cards/:vocabId/mark-known', authMiddleware, toggleMarkKnown);
 
 export default router;
