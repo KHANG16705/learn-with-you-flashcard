@@ -13,42 +13,42 @@ const DATA_FILE = path.join(__dirname, 'data', 'oxford_3000_structured_4tiers.js
 const MACRO_CATEGORIES = {
   LIFE_PEOPLE: {
     id: 'life_people',
-    name: '👨‍👩‍👧‍👦 Đời sống, Gia đình & Ẩm thực',
+    name: 'Đời sống & Gia đình',
     order: 1
   },
   TRAVEL_LEISURE: {
     id: 'travel_leisure',
-    name: '✈️ Di chuyển, Địa điểm & Giải trí',
+    name: 'Du lịch & Giải trí',
     order: 2
   },
   WORK_EDUCATION: {
     id: 'work_education',
-    name: '💼 Công việc, Kinh tế & Giáo dục',
+    name: 'Học tập & Công việc',
     order: 3
   },
   NATURE_SCIENCE_SOCIETY: {
     id: 'nature_science_society',
-    name: '🌿 Tự nhiên, Khoa học, Y tế & Xã hội',
+    name: 'Thiên nhiên & Xã hội',
     order: 4
   },
   MIND_ACTIONS_GRAMMAR: {
     id: 'mind_actions_grammar',
-    name: '🧠 Tư duy, Cảm xúc, Hành động & Ngữ pháp',
+    name: 'Giao tiếp & Ngữ pháp',
     order: 5
   }
 };
 
 /**
  * DANH SÁCH CHỦ ĐỀ CHI TIẾT (SUB-TOPICS) GẮN VỚI 5 NHÓM CHỦ ĐỀ LỚN
- * Lưu ý: Chỉ dùng từ khóa tiếng Anh nguyên từ (enWords) và cụm từ tiếng Việt >= 2 âm tiết (viPhrases)
- * để tránh tuyệt đối lỗi khớp nhầm chuỗi con (như "tuyên bố" -> "bố", "khả năng" -> "ăn").
+ * Đặt tên ngắn gọn (2-3 từ), tự nhiên theo đúng chuẩn Parroto.
  */
 const SUB_TOPICS = [
-  // ================= NHÓM 1: ĐỜI SỐNG, GIA ĐÌNH & ẨM THỰC =================
+  // ================= NHÓM 1: ĐỜI SỐNG & GIA ĐÌNH =================
   {
     id: 'family_relationships',
     category: MACRO_CATEGORIES.LIFE_PEOPLE,
-    title: '👨‍👩‍👧‍👦 Gia đình, Con người & Mối quan hệ',
+    title: 'Gia đình & Người thân',
+    unitTitles: ['Gia đình & Người thân', 'Con người & Bạn bè', 'Mối quan hệ xã hội'],
     enWords: new Set([
       'family', 'father', 'dad', 'mother', 'mum', 'mom', 'parent', 'parents', 'son', 'daughter',
       'brother', 'sister', 'husband', 'wife', 'child', 'children', 'baby', 'boy', 'girl', 'man',
@@ -72,7 +72,8 @@ const SUB_TOPICS = [
   {
     id: 'home_furniture',
     category: MACRO_CATEGORIES.LIFE_PEOPLE,
-    title: '🏠 Nhà cửa, Nội thất & Sinh hoạt',
+    title: 'Nhà cửa & Nội thất',
+    unitTitles: ['Nhà cửa & Phòng ốc', 'Nội thất & Đồ gia dụng', 'Sinh hoạt trong nhà'],
     enWords: new Set([
       'home', 'house', 'housing', 'flat', 'apartment', 'accommodation', 'building', 'room',
       'bedroom', 'bathroom', 'kitchen', 'living room', 'garden', 'yard', 'garage', 'hall',
@@ -96,7 +97,8 @@ const SUB_TOPICS = [
   {
     id: 'clothing_materials',
     category: MACRO_CATEGORIES.LIFE_PEOPLE,
-    title: '👕 Trang phục, Phụ kiện & Chất liệu',
+    title: 'Quần áo & Thời trang',
+    unitTitles: ['Quần áo & Trang phục', 'Phụ kiện & Chất liệu', 'Thời trang & Phong cách'],
     enWords: new Set([
       'clothes', 'clothing', 'cloth', 'shirt', 't-shirt', 'trousers', 'pants', 'jeans', 'shorts',
       'skirt', 'dress', 'suit', 'coat', 'jacket', 'sweater', 'jumper', 'hat', 'cap', 'shoe',
@@ -117,7 +119,8 @@ const SUB_TOPICS = [
   {
     id: 'food_cooking',
     category: MACRO_CATEGORIES.LIFE_PEOPLE,
-    title: '🍎 Ẩm thực, Đồ ăn & Thức uống',
+    title: 'Đồ ăn & Thức uống',
+    unitTitles: ['Đồ ăn & Thực phẩm', 'Đồ uống & Trái cây', 'Nấu ăn & Nhà hàng', 'Hương vị & Bữa ăn'],
     enWords: new Set([
       'food', 'eat', 'drink', 'meal', 'breakfast', 'lunch', 'dinner', 'snack', 'feast', 'water',
       'milk', 'tea', 'coffee', 'juice', 'beer', 'wine', 'alcohol', 'alcoholic', 'bread', 'butter',
@@ -148,7 +151,8 @@ const SUB_TOPICS = [
   {
     id: 'travel_transport',
     category: MACRO_CATEGORIES.TRAVEL_LEISURE,
-    title: '✈️ Du lịch, Giao thông & Phương tiện',
+    title: 'Du lịch & Giao thông',
+    unitTitles: ['Du lịch & Kỳ nghỉ', 'Phương tiện giao thông', 'Đường phố & Đi lại', 'Hành trình & Chuyến bay'],
     enWords: new Set([
       'travel', 'traveller', 'traveler', 'trip', 'journey', 'tour', 'tourism', 'tourist',
       'holiday', 'vacation', 'expedition', 'voyage', 'cruise', 'flight', 'fly', 'plane',
@@ -179,7 +183,8 @@ const SUB_TOPICS = [
   {
     id: 'places_geography',
     category: MACRO_CATEGORIES.TRAVEL_LEISURE,
-    title: '🏙️ Đô thị, Địa điểm & Không gian',
+    title: 'Địa điểm & Thành phố',
+    unitTitles: ['Địa điểm & Đô thị', 'Vị trí & Phương hướng', 'Khu vực & Không gian'],
     enWords: new Set([
       'place', 'location', 'site', 'spot', 'venue', 'position', 'area', 'region', 'regional',
       'zone', 'district', 'territory', 'province', 'county', 'state', 'country', 'nation',
@@ -204,7 +209,8 @@ const SUB_TOPICS = [
   {
     id: 'arts_media_entertainment',
     category: MACRO_CATEGORIES.TRAVEL_LEISURE,
-    title: '🎨 Nghệ thuật, Giải trí & Truyền thông',
+    title: 'Nghệ thuật & Giải trí',
+    unitTitles: ['Âm nhạc & Nghệ thuật', 'Phim ảnh & Văn học', 'Báo chí & Truyền thông', 'Sự kiện & Giải trí'],
     enWords: new Set([
       'art', 'artist', 'artistic', 'artwork', 'paint', 'painter', 'painting', 'draw', 'drawing',
       'sketch', 'picture', 'photo', 'photograph', 'photographer', 'photography', 'camera',
@@ -239,7 +245,8 @@ const SUB_TOPICS = [
   {
     id: 'sports_games',
     category: MACRO_CATEGORIES.TRAVEL_LEISURE,
-    title: '⚽ Thể thao, Trò chơi & Vận động',
+    title: 'Thể thao & Vận động',
+    unitTitles: ['Thể thao & Thi đấu', 'Trò chơi & Vận động', 'Giải đấu & Chiến thắng'],
     enWords: new Set([
       'sport', 'sports', 'athlete', 'athletic', 'athletics', 'player', 'team', 'club', 'squad',
       'coach', 'trainer', 'captain', 'referee', 'spectator', 'fan', 'supporter', 'match', 'game',
@@ -268,7 +275,8 @@ const SUB_TOPICS = [
   {
     id: 'work_career',
     category: MACRO_CATEGORIES.WORK_EDUCATION,
-    title: '💼 Công việc, Sự nghiệp & Công sở',
+    title: 'Công việc & Nghề nghiệp',
+    unitTitles: ['Nghề nghiệp & Việc làm', 'Công sở & Quản lý', 'Sự nghiệp & Tuyển dụng'],
     enWords: new Set([
       'work', 'working', 'worker', 'workplace', 'workforce', 'job', 'career', 'profession',
       'professional', 'occupation', 'post', 'position', 'role', 'employment', 'employ',
@@ -300,7 +308,8 @@ const SUB_TOPICS = [
   {
     id: 'business_finance',
     category: MACRO_CATEGORIES.WORK_EDUCATION,
-    title: '💰 Kinh doanh, Thương mại & Tài chính',
+    title: 'Kinh doanh & Tài chính',
+    unitTitles: ['Mua sắm & Giá cả', 'Kinh doanh & Thương mại', 'Tài chính & Ngân hàng', 'Kinh tế & Đầu tư'],
     enWords: new Set([
       'business', 'Businessman', 'businesswoman', 'company', 'firm', 'corporation', 'corporate',
       'enterprise', 'organization', 'organisation', 'agency', 'institution', 'branch',
@@ -345,7 +354,8 @@ const SUB_TOPICS = [
   {
     id: 'education_language_study',
     category: MACRO_CATEGORIES.WORK_EDUCATION,
-    title: '🎓 Giáo dục, Học thuật & Ngôn ngữ',
+    title: 'Trường học & Giáo dục',
+    unitTitles: ['Trường học & Lớp học', 'Học tập & Thi cử', 'Ngôn ngữ & Đọc viết', 'Nghiên cứu & Học thuật'],
     enWords: new Set([
       'school', 'preschool', 'primary', 'elementary', 'secondary', 'college', 'university',
       'academy', 'academic', 'institute', 'campus', 'education', 'educational', 'educate',
@@ -403,7 +413,8 @@ const SUB_TOPICS = [
   {
     id: 'body_health_medicine',
     category: MACRO_CATEGORIES.NATURE_SCIENCE_SOCIETY,
-    title: '🏥 Cơ thể, Sức khỏe & Y học',
+    title: 'Cơ thể & Sức khỏe',
+    unitTitles: ['Cơ thể & Giác quan', 'Sức khỏe & Bệnh tật', 'Y tế & Điều trị'],
     enWords: new Set([
       'body', 'bodily', 'physical', 'head', 'skull', 'face', 'Facial', 'forehead', 'cheek',
       'chin', 'jaw', 'hair', 'beard', 'moustache', 'eye', 'eyebrow', 'eyelash', 'eyelid', 'sight',
@@ -455,7 +466,8 @@ const SUB_TOPICS = [
   {
     id: 'nature_environment_animals',
     category: MACRO_CATEGORIES.NATURE_SCIENCE_SOCIETY,
-    title: '🌿 Thiên nhiên, Động thực vật & Khí hậu',
+    title: 'Thiên nhiên & Động vật',
+    unitTitles: ['Động vật & Cây cối', 'Thời tiết & Khí hậu', 'Địa hình & Thiên nhiên', 'Môi trường & Sinh thái'],
     enWords: new Set([
       'nature', 'natural', 'environment', 'environmental', 'ecology', 'ecological', 'ecosystem',
       'habitat', 'conservation', 'preserve', 'wildlife', 'wild', 'climate', 'weather', 'forecast',
@@ -514,7 +526,8 @@ const SUB_TOPICS = [
   {
     id: 'science_tech_engineering',
     category: MACRO_CATEGORIES.NATURE_SCIENCE_SOCIETY,
-    title: '💻 Khoa học, Công nghệ & Kỹ thuật',
+    title: 'Công nghệ & Khoa học',
+    unitTitles: ['Máy tính & Internet', 'Thiết bị & Điện tử', 'Khoa học & Phát minh'],
     enWords: new Set([
       'science', 'scientific', 'scientist', 'technology', 'technological', 'technical', 'technique',
       'high-tech', 'engineering', 'machine', 'machinery', 'mechanism', 'mechanical', 'device',
@@ -562,7 +575,8 @@ const SUB_TOPICS = [
   {
     id: 'society_law_politics',
     category: MACRO_CATEGORIES.NATURE_SCIENCE_SOCIETY,
-    title: '⚖️ Xã hội, Luật pháp, Chính trị & An ninh',
+    title: 'Xã hội & Pháp luật',
+    unitTitles: ['Xã hội & Văn hóa', 'Pháp luật & Tòa án', 'Chính trị & Nhà nước', 'An ninh & Quân sự'],
     enWords: new Set([
       'society', 'social', 'community', 'public', 'citizen', 'citizenship', 'civil', 'civilian',
       'population', 'demographic', 'minority', 'majority', 'ethnic', 'race', 'racial', 'racism',
@@ -639,7 +653,16 @@ const SUB_TOPICS = [
   {
     id: 'time_numbers_measures',
     category: MACRO_CATEGORIES.NATURE_SCIENCE_SOCIETY,
-    title: '⏰ Thời gian, Số đếm, Màu sắc & Đo lường',
+    title: 'Thời gian & Đo lường',
+    unitTitles: [
+      'Thời gian & Ngày tháng',
+      'Số đếm & Tần suất',
+      'Kích thước & Độ dài',
+      'Trọng lượng & Đo lường',
+      'Màu sắc & Ánh sáng',
+      'Hình dạng & Không gian',
+      'Mức độ & Tỷ lệ'
+    ],
     enWords: new Set([
       'time', 'second', 'minute', 'hour', 'o’clock', "o'clock", 'day', 'daily', 'daytime',
       'daylight', 'dawn', 'morning', 'noon', 'midday', 'afternoon', 'dusk', 'evening', 'night',
@@ -719,7 +742,8 @@ const SUB_TOPICS = [
   {
     id: 'feelings_emotions_personality',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '😊 Cảm xúc, Tâm trạng & Tính cách',
+    title: 'Cảm xúc & Tính cách',
+    unitTitles: ['Cảm xúc & Tâm trạng', 'Tính cách & Thái độ', 'Phẩm chất con người', 'Trạng thái tinh thần'],
     enWords: new Set([
       'feel', 'feeling', 'emotion', 'emotional', 'mood', 'passion', 'passionate', 'temper',
       'attitude', 'character', 'personality', 'trait', 'nature', 'spirit', 'happy', 'happiness',
@@ -791,7 +815,8 @@ const SUB_TOPICS = [
   {
     id: 'mind_cognition_decisions',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '🧠 Tư duy, Nhận thức & Phán đoán',
+    title: 'Suy nghĩ & Quyết định',
+    unitTitles: ['Suy nghĩ & Trí nhớ', 'Ý kiến & Quan điểm', 'Lựa chọn & Quyết định'],
     enWords: new Set([
       'think', 'thinking', 'thought', 'thoughtful', 'mind', 'mental', 'intellect', 'intellectual',
       'reason', 'reasoning', 'logic', 'sense', 'idea', 'notion', 'concept', 'conception',
@@ -843,7 +868,16 @@ const SUB_TOPICS = [
   {
     id: 'grammar_connectors_structure',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '🔗 Từ nối, Giới từ, Đại từ & Cấu trúc câu',
+    title: 'Từ nối & Ngữ pháp',
+    unitTitles: [
+      'Đại từ & Từ sở hữu',
+      'Từ hạn định & Lượng từ',
+      'Giới từ vị trí',
+      'Giới từ thời gian',
+      'Từ nối & Liên từ',
+      'Trợ động từ thông dụng',
+      'Từ để hỏi & Giao tiếp'
+    ],
     enWords: new Set([
       'a', 'an', 'a, an', 'the', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her',
       'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs', 'i', 'me', 'you', 'he',
@@ -893,32 +927,56 @@ const SPECIALIZED_FALLBACK_TOPICS = {
   VERBS_COMMUNICATION: {
     id: 'verbs_communication_social',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '🗣️ Động từ Giao tiếp, Biểu đạt & Tương tác'
+    title: 'Giao tiếp & Phản hồi',
+    unitTitles: ['Giao tiếp & Trò chuyện', 'Thảo luận & Phản hồi', 'Thuyết phục & Biểu đạt']
   },
   VERBS_MOVEMENT_PHYSICAL: {
     id: 'verbs_movement_physical',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '🏃 Động từ Chuyển động, Thao tác & Hành động'
+    title: 'Hoạt động hàng ngày',
+    unitTitles: [
+      'Hoạt động hàng ngày',
+      'Chuyển động & Đi lại',
+      'Thao tác & Cầm nắm',
+      'Hành động & Tác động',
+      'Sử dụng & Kết hợp'
+    ]
   },
   VERBS_CHANGE_PROGRESS: {
     id: 'verbs_change_management',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '🔄 Động từ Biến đổi, Phát triển & Tổ chức'
+    title: 'Thay đổi & Phát triển',
+    unitTitles: ['Thay đổi & Phát triển', 'Tổ chức & Thực hiện', 'Quản lý & Vận hành', 'Kết nối & Duy trì']
   },
   ADJ_QUALITY_EVALUATION: {
     id: 'adj_quality_evaluation',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '✨ Tính từ Phẩm chất, Đặc điểm & Đánh giá'
+    title: 'Mô tả & Đặc điểm',
+    unitTitles: [
+      'Mô tả & Đặc điểm',
+      'Tính chất & Trạng thái',
+      'Đánh giá & Chất lượng',
+      'Mức độ & Tầm quan trọng',
+      'Khả năng & Điều kiện'
+    ]
   },
   ADV_MANNER_DEGREE: {
     id: 'adv_manner_degree',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '🎯 Trạng từ Cách thức, Mức độ & Nhấn mạnh'
+    title: 'Trạng từ thông dụng',
+    unitTitles: ['Trạng từ cách thức', 'Trạng từ mức độ', 'Trạng từ nhấn mạnh']
   },
   NOUNS_CONCEPTS_SYSTEMS: {
     id: 'nouns_concepts_events',
     category: MACRO_CATEGORIES.MIND_ACTIONS_GRAMMAR,
-    title: '💡 Danh từ Khái niệm, Sự kiện & Hệ quả'
+    title: 'Sự việc & Khái niệm',
+    unitTitles: [
+      'Sự việc & Tình huống',
+      'Vấn đề & Giải pháp',
+      'Kết quả & Ảnh hưởng',
+      'Khái niệm & Hệ thống',
+      'Hiện tượng & Quy luật'
+    ]
   }
 };
 
@@ -1223,23 +1281,24 @@ function createUnitsForSubTopic(subTopic, cards) {
       });
     });
 
-    // Lấy 3 từ đầu tiên (dễ nhớ, tiêu biểu) làm gợi ý ngay trên tên Unit
-    const sampleWords = slice
-      .slice(0, 3)
-      .map((c) => cleanEnglishWord(c.word))
-      .join(', ');
-
-    const partSuffix =
-      numUnits > 1
-        ? ` - Bài ${u + 1} (${sampleWords}...)`
-        : ` (${sampleWords}...)`;
+    // Đặt tên Unit ngắn gọn, tự nhiên theo đúng chuẩn Parroto (2-3 từ, không nhồi nhét danh sách từ)
+    let cleanUnitTitle = subTopic.title;
+    if (Array.isArray(subTopic.unitTitles) && subTopic.unitTitles.length > 0) {
+      if (u < subTopic.unitTitles.length) {
+        cleanUnitTitle = subTopic.unitTitles[u];
+      } else {
+        cleanUnitTitle = `${subTopic.title} ${u + 1}`;
+      }
+    } else if (numUnits > 1) {
+      cleanUnitTitle = `${subTopic.title} ${u + 1}`;
+    }
 
     units.push({
       category_id: subTopic.category.id,
       category_name: subTopic.category.name,
       sub_topic_id: subTopic.id,
       base_title: subTopic.title,
-      display_title: `${subTopic.title}${partSuffix}`,
+      display_title: cleanUnitTitle,
       cards: slice
     });
   }
@@ -1336,9 +1395,11 @@ function runRebuildTaxonomy() {
         buckets.get(subTopic.id).push(card);
       }
 
-      // 3. Dựng danh sách Units theo thứ tự 5 Nhóm Chủ đề lớn
-      const newUnits = [];
-      let nextUnitNum = 1;
+      // 3. Gom các nhóm quá nhỏ (< 8 từ) trong cùng 1 Macro Category lại để không bị Unit chỉ có 2-4 từ
+      const orderedGroups = [];
+      let pendingSmallCards = [];
+      let pendingCategory = null;
+      let pendingSubTopic = null;
 
       for (let s = 0; s < ORDERED_SUB_TOPIC_IDS.length; s++) {
         const subId = ORDERED_SUB_TOPIC_IDS[s];
@@ -1346,6 +1407,75 @@ function runRebuildTaxonomy() {
         if (cardsInSub.length === 0) continue;
 
         const subTopic = subTopicMeta.get(subId);
+
+        if (pendingCategory && pendingCategory.id !== subTopic.category.id && pendingSmallCards.length > 0) {
+          // Nếu đổi sang Macro Category mới mà còn thẻ lẻ của Category cũ -> ghép vào nhóm trước đó cùng Category hoặc tạo 1 nhóm gọn
+          if (orderedGroups.length > 0 && orderedGroups[orderedGroups.length - 1].subTopic.category.id === pendingCategory.id) {
+            orderedGroups[orderedGroups.length - 1].cards.push(...pendingSmallCards);
+          } else {
+            orderedGroups.push({
+              subTopic: pendingSubTopic,
+              cards: pendingSmallCards
+            });
+          }
+          pendingSmallCards = [];
+          pendingCategory = null;
+          pendingSubTopic = null;
+        }
+
+        if (cardsInSub.length < 8) {
+          pendingSmallCards.push(...cardsInSub);
+          pendingCategory = subTopic.category;
+          if (!pendingSubTopic) pendingSubTopic = subTopic;
+
+          if (pendingSmallCards.length >= 12) {
+            orderedGroups.push({
+              subTopic: {
+                ...pendingSubTopic,
+                title: pendingCategory.name,
+                unitTitles: [pendingCategory.name]
+              },
+              cards: pendingSmallCards
+            });
+            pendingSmallCards = [];
+            pendingCategory = null;
+            pendingSubTopic = null;
+          }
+        } else {
+          if (pendingSmallCards.length > 0 && pendingCategory && pendingCategory.id === subTopic.category.id) {
+            cardsInSub.unshift(...pendingSmallCards);
+            pendingSmallCards = [];
+            pendingCategory = null;
+            pendingSubTopic = null;
+          }
+          orderedGroups.push({
+            subTopic,
+            cards: cardsInSub
+          });
+        }
+      }
+
+      if (pendingSmallCards.length > 0 && pendingSubTopic) {
+        if (orderedGroups.length > 0 && orderedGroups[orderedGroups.length - 1].subTopic.category.id === pendingCategory.id) {
+          orderedGroups[orderedGroups.length - 1].cards.push(...pendingSmallCards);
+        } else {
+          orderedGroups.push({
+            subTopic: {
+              ...pendingSubTopic,
+              title: pendingCategory.name,
+              unitTitles: [pendingCategory.name]
+            },
+            cards: pendingSmallCards
+          });
+        }
+      }
+
+      // 4. Dựng danh sách Units theo thứ tự 5 Nhóm Chủ đề lớn
+      const newUnits = [];
+      let nextUnitNum = 1;
+
+      for (let g = 0; g < orderedGroups.length; g++) {
+        const { subTopic, cards: cardsInSub } = orderedGroups[g];
 
         // Tạo 3 đáp án nhiễu cùng từ loại & cùng chủ đề
         buildSmartDistractors(cardsInSub);
@@ -1363,7 +1493,7 @@ function runRebuildTaxonomy() {
             unit_number: nextUnitNum,
             category_id: uObj.category_id,
             category_name: uObj.category_name,
-            title: `Unit ${nextUnitNum}: ${uObj.display_title}`,
+            title: uObj.display_title,
             card_count: uObj.cards.length,
             cards: uObj.cards
           });

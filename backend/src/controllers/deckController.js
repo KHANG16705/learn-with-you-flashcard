@@ -31,55 +31,99 @@ function inferUnitCategory(unitTitle = '') {
 
   if (
     title.includes('Gia đình') ||
+    title.includes('Con người') ||
+    title.includes('Mối quan hệ') ||
     title.includes('Nhà cửa') ||
-    title.includes('Trang phục') ||
-    title.includes('Ẩm thực')
+    title.includes('Nội thất') ||
+    title.includes('Sinh hoạt') ||
+    title.includes('Quần áo') ||
+    title.includes('Phụ kiện') ||
+    title.includes('Thời trang') ||
+    title.includes('Đồ ăn') ||
+    title.includes('Đồ uống') ||
+    title.includes('Nấu ăn') ||
+    title.includes('Hương vị') ||
+    title.includes('Đời sống')
   ) {
     return {
       category_id: 'life_people',
-      category_name: '👨‍👩‍👧‍👦 Đời sống, Gia đình & Ẩm thực',
+      category_name: 'Đời sống & Gia đình',
     };
   }
 
   if (
     title.includes('Du lịch') ||
-    title.includes('Đô thị') ||
-    title.includes('Nghệ thuật') ||
-    title.includes('Thể thao')
+    title.includes('Phương tiện') ||
+    title.includes('Đường phố') ||
+    title.includes('Hành trình') ||
+    title.includes('Địa điểm') ||
+    title.includes('Vị trí') ||
+    title.includes('Khu vực') ||
+    title.includes('Âm nhạc') ||
+    title.includes('Phim ảnh') ||
+    title.includes('Báo chí') ||
+    title.includes('Sự kiện') ||
+    title.includes('Thể thao') ||
+    title.includes('Trò chơi') ||
+    title.includes('Giải đấu')
   ) {
     return {
       category_id: 'travel_leisure',
-      category_name: '✈️ Di chuyển, Địa điểm & Giải trí',
+      category_name: 'Du lịch & Giải trí',
     };
   }
 
   if (
-    title.includes('Công việc') ||
+    title.includes('Nghề nghiệp') ||
+    title.includes('Công sở') ||
+    title.includes('Sự nghiệp') ||
+    title.includes('Mua sắm') ||
     title.includes('Kinh doanh') ||
-    title.includes('Giáo dục')
+    title.includes('Tài chính') ||
+    title.includes('Kinh tế') ||
+    title.includes('Trường học') ||
+    title.includes('Học tập') ||
+    title.includes('Ngôn ngữ') ||
+    title.includes('Nghiên cứu')
   ) {
     return {
       category_id: 'work_education',
-      category_name: '💼 Công việc, Kinh tế & Giáo dục',
+      category_name: 'Học tập & Công việc',
     };
   }
 
   if (
     title.includes('Cơ thể') ||
-    title.includes('Thiên nhiên') ||
+    title.includes('Sức khỏe') ||
+    title.includes('Y tế') ||
+    title.includes('Động vật') ||
+    title.includes('Thời tiết') ||
+    title.includes('Địa hình') ||
+    title.includes('Môi trường') ||
+    title.includes('Máy tính') ||
+    title.includes('Thiết bị') ||
     title.includes('Khoa học') ||
     title.includes('Xã hội') ||
-    title.includes('Thời gian')
+    title.includes('Pháp luật') ||
+    title.includes('Chính trị') ||
+    title.includes('An ninh') ||
+    title.includes('Thời gian') ||
+    title.includes('Số đếm') ||
+    title.includes('Kích thước') ||
+    title.includes('Trọng lượng') ||
+    title.includes('Màu sắc') ||
+    title.includes('Hình dạng') ||
+    title.includes('Mức độ')
   ) {
     return {
       category_id: 'nature_science_society',
-      category_name: '🌿 Tự nhiên, Khoa học, Y tế & Xã hội',
+      category_name: 'Thiên nhiên & Xã hội',
     };
   }
 
   return {
     category_id: 'mind_actions_grammar',
-    category_name: '🧠 Tư duy, Cảm xúc, Hành động & Ngữ pháp',
+    category_name: 'Giao tiếp & Ngữ pháp',
   };
 }
 

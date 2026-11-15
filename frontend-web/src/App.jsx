@@ -1,6 +1,16 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { BookOpen, Layers, BookMarked, BarChart3, Sun, Moon, LogOut } from 'lucide-react';
+import {
+  BookOpen,
+  Layers,
+  BookMarked,
+  BarChart3,
+  Sun,
+  Moon,
+  LogOut,
+  Globe,
+  GraduationCap,
+} from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore.js';
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -21,8 +31,8 @@ function ProtectedRoute({ children }) {
 }
 
 /**
- * Thanh Menu trên cùng (Header Navbar):
- * Chứa Logo, Menu chuyển trang, Nút gạt đổi ngôn ngữ (Anh <-> Trung), Đổi màu Sáng/Tối và Đăng xuất
+ * Thanh Menu trên cùng (Header Navbar) chuẩn phong cách Parroto / Tactile Duo:
+ * Dùng viền 2px rõ nét, nút bấm 3D xúc giác và bộ icon vector Lucide thay cho emoji.
  */
 function TopNavbar() {
   const location = useLocation();
@@ -33,105 +43,120 @@ function TopNavbar() {
   const toggleTheme = useAuthStore((state) => state.toggleTheme);
   const logout = useAuthStore((state) => state.logout);
 
+  const isVocabActive =
+    location.pathname === '/' ||
+    location.pathname.startsWith('/decks') ||
+    location.pathname.startsWith('/study');
+
   return (
-    <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-700">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        {/* Cột trái: Logo và các mục Menu chính */}
+    <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b-2 border-[#e2e8f0] dark:border-slate-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        {/* Cột trái: Logo thương hiệu & các mục điều hướng chính */}
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2.5 font-bold text-lg text-blue-600 dark:text-blue-400">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-              <BookOpen className="w-5 h-5" />
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-duo bg-[#262c57] border-2 border-[#161c41] shadow-[0_2px_0_0_#161c41] text-white flex items-center justify-center transition-transform group-hover:scale-105">
+              <GraduationCap className="w-5 h-5" />
             </div>
-            <span>LWY</span>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-lg leading-none tracking-tight text-[#262c57] dark:text-white">
+                LWY
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#3c94d4]">
+                Spaced Repetition
+              </span>
+            </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-2">
             <Link
               to="/"
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                location.pathname === '/'
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              className={`btn-duo flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wide border-2 ${
+                isVocabActive
+                  ? 'bg-[#262c57] text-white border-[#161c41] shadow-[0_2px_0_0_#161c41]'
+                  : 'bg-white dark:bg-slate-800 text-[#4a5568] dark:text-slate-300 border-transparent hover:border-[#e2e8f0] dark:hover:border-slate-700 hover:bg-[#f0f4ff] dark:hover:bg-slate-800'
               }`}
             >
               <Layers className="w-4 h-4" />
-              Bộ thẻ từ vựng
+              <span>Từ vựng</span>
             </Link>
+
             <Link
               to="/notebooks"
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              className={`btn-duo flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wide border-2 ${
                 location.pathname.startsWith('/notebooks')
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-[#262c57] text-white border-[#161c41] shadow-[0_2px_0_0_#161c41]'
+                  : 'bg-white dark:bg-slate-800 text-[#4a5568] dark:text-slate-300 border-transparent hover:border-[#e2e8f0] dark:hover:border-slate-700 hover:bg-[#f0f4ff] dark:hover:bg-slate-800'
               }`}
             >
               <BookMarked className="w-4 h-4" />
-              Sổ tay cá nhân
+              <span>Sổ tay từ vựng</span>
             </Link>
+
             <Link
               to="/analytics"
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              className={`btn-duo flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wide border-2 ${
                 location.pathname.startsWith('/analytics')
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-[#262c57] text-white border-[#161c41] shadow-[0_2px_0_0_#161c41]'
+                  : 'bg-white dark:bg-slate-800 text-[#4a5568] dark:text-slate-300 border-transparent hover:border-[#e2e8f0] dark:hover:border-slate-700 hover:bg-[#f0f4ff] dark:hover:bg-slate-800'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
-              Thống kê
+              <span>Thống kê</span>
             </Link>
           </nav>
         </div>
 
-        {/* Cột phải: Công tắc đổi ngôn ngữ (EN <-> ZH), Đổi Sáng/Tối và Tài khoản */}
-        <div className="flex items-center gap-3">
+        {/* Cột phải: Chuyển đổi ngôn ngữ (EN / ZH), Chế độ Sáng/Tối và Tài khoản */}
+        <div className="flex items-center gap-2.5">
           {/* Công tắc chuyển đổi tức thì giữa Tiếng Anh (EN) và Tiếng Trung (ZH) */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-700 p-1 rounded-xl">
+          <div className="flex items-center bg-[#f0f4ff] dark:bg-slate-800 p-1 rounded-xl border-2 border-[#e2e8f0] dark:border-slate-700">
             <button
               type="button"
               onClick={() => switchLanguage('EN')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer ${
                 currentLang === 'EN'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-300'
+                  ? 'bg-[#262c57] text-white shadow-sm'
+                  : 'text-[#4a5568] dark:text-slate-300 hover:text-[#262c57]'
               }`}
             >
-              🇬🇧 Tiếng Anh
+              <Globe className="w-3.5 h-3.5" />
+              <span>EN · Tiếng Anh</span>
             </button>
             <button
               type="button"
               onClick={() => switchLanguage('ZH')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer ${
                 currentLang === 'ZH'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-300'
+                  ? 'bg-[#262c57] text-white shadow-sm'
+                  : 'text-[#4a5568] dark:text-slate-300 hover:text-[#262c57]'
               }`}
             >
-              🇨🇳 Tiếng Trung
+              <span>ZH · Tiếng Trung</span>
             </button>
           </div>
 
-          {/* Nút đổi chế độ Sáng / Tối */}
+          {/* Nút đổi giao diện Sáng / Tối */}
           <button
             type="button"
             onClick={toggleTheme}
             title="Đổi giao diện Sáng / Tối"
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+            className="btn-duo p-2 rounded-xl border-2 border-[#e2e8f0] dark:border-slate-700 bg-white dark:bg-slate-800 text-[#262c57] dark:text-slate-200 shadow-duo-sm cursor-pointer"
           >
             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
 
-          {/* Tên người dùng & Nút đăng xuất */}
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
-            <span className="hidden sm:inline text-sm font-medium text-slate-700 dark:text-slate-200">
+          {/* Thông tin tài khoản & Nút đăng xuất */}
+          <div className="flex items-center gap-2 pl-2 border-l-2 border-[#e2e8f0] dark:border-slate-700">
+            <span className="hidden lg:inline text-xs font-bold text-[#1a1a2e] dark:text-slate-200 max-w-[140px] truncate">
               {user?.display_name || user?.email}
             </span>
             <button
               type="button"
               onClick={logout}
               title="Đăng xuất"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+              className="btn-duo flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold border-2 border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 shadow-[0_2px_0_0_rgb(254,205,211)] cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Thoát</span>
             </button>
           </div>
@@ -145,7 +170,6 @@ export default function App() {
   const token = useAuthStore((state) => state.token);
   const fetchMe = useAuthStore((state) => state.fetchMe);
 
-  // Khi mở trang web lên, nếu đã có token thì tự động lấy lại thông tin mới nhất của user
   useEffect(() => {
     if (token) {
       fetchMe();
@@ -154,18 +178,15 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-        {/* Chỉ hiển thị thanh Menu trên cùng khi người dùng đã đăng nhập */}
+      <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 text-[#1a1a2e] dark:text-slate-100">
         {token && <TopNavbar />}
 
         <Routes>
-          {/* Trang đăng nhập / đăng ký */}
           <Route
             path="/login"
             element={token ? <Navigate to="/" replace /> : <LoginPage />}
           />
 
-          {/* Các trang yêu cầu phải đăng nhập mới được vào */}
           <Route
             path="/"
             element={
@@ -215,7 +236,6 @@ export default function App() {
             }
           />
 
-          {/* Đường dẫn lạ tự động đưa về trang chủ */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

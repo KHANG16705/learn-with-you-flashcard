@@ -2,7 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tuỳ chỉnh thanh cuộn gọn gàng và hiệu ứng lật thẻ 3D */
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a2e;
+  --primary: #262c57;
+  --primary-dark: #161c41;
+  --secondary: #3c94d4;
+  --secondary-dark: #1e64a5;
+  --success: #22c55e;
+  --success-dark: #15803d;
+  --destructive: #e53e3e;
+  --destructive-dark: #a52323;
+  --muted: #f0f4ff;
+  --muted-dark: #d6dcf0;
+  --muted-foreground: #4a5568;
+  --border: #e2e8f0;
+  --border-dark: #c7d2e0;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --primary: #3b82f6;
+  --primary-dark: #1d4ed8;
+  --secondary: #38bdf8;
+  --secondary-dark: #0284c7;
+  --muted: #1e293b;
+  --muted-dark: #334155;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --border-dark: #1e293b;
+}
+
+/* Hệ thống Bo góc & Đổ bóng 3D xúc giác chuẩn Parroto / Duolingo (Tactile Duo System) */
+.rounded-duo {
+  border-radius: 16px;
+}
+
+.rounded-duo-lg {
+  border-radius: 20px;
+}
+
+.rounded-duo-pill {
+  border-radius: 9999px;
+}
+
+.shadow-duo {
+  box-shadow: 0 4px 0 0 var(--border-dark);
+}
+
+.shadow-duo-sm {
+  box-shadow: 0 2px 0 0 var(--border-dark);
+}
+
+.shadow-duo-primary {
+  box-shadow: 0 4px 0 0 #161c41;
+}
+
+.shadow-duo-secondary {
+  box-shadow: 0 4px 0 0 #1e64a5;
+}
+
+.shadow-duo-success {
+  box-shadow: 0 4px 0 0 #15803d;
+}
+
+.shadow-duo-amber {
+  box-shadow: 0 4px 0 0 #b45309;
+}
+
+.shadow-duo-danger {
+  box-shadow: 0 4px 0 0 #a52323;
+}
+
+/* Hiệu ứng nút bấm nổi 3D lún xuống khi click */
+.btn-duo {
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-duo:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.btn-duo:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 0 transparent !important;
+}
+
+/* Hiệu ứng lật thẻ 3D */
 .perspective-1000 {
   perspective: 1000px;
 }
@@ -10,4 +97,23 @@
 .backface-hidden {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+/* Thanh cuộn mảnh gọn cho Sidebar Bài học */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
 }

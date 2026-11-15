@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Volume2 } from 'lucide-react';
 
 /**
- * Nút Loa phát âm từ vựng hoặc câu ví dụ (AudioButton)
- * Ưu tiên phát file .mp3 nếu có (audioUrl), nếu chưa có thì dùng giọng đọc tự nhiên
- * có sẵn trên trình duyệt (window.speechSynthesis: 'en-US' cho Tiếng Anh, 'zh-CN' cho Tiếng Trung)
+ * Nút Loa phát âm từ vựng hoặc câu ví dụ chuẩn thiết kế Parroto (Tactile Duo Button)
+ * Hỗ trợ chọn giọng Anh-Mỹ (accent="US") hoặc Anh-Anh (accent="UK") và Tiếng Trung (lang="ZH")
  */
 export default function AudioButton({
   text = '',
   lang = 'EN',
+  accent = 'US',
   audioUrl = null,
   size = 'md',
   label = '',
@@ -16,17 +16,16 @@ export default function AudioButton({
 }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Hàm xử lý khi bấm vào nút Loa
+  // Hàm xử lý khi người dùng bấm vào nút Loa
   function handlePlayAudio(event) {
-    // Ngăn sự kiện click lan ra ngoài (ví dụ tránh làm lật thẻ Flashcard khi bấm nghe loa)
     event.stopPropagation();
 
     if (!text && !audioUrl) {
       return;
     }
 
-    // Cách 1: Nếu có đường dẫn file .mp3 thì phát file âm thanh trước
-    if (audioUrl) {
+    // Nếu có file .mp3 và đang ở giọng mặc định US thì ưu tiên phát file âm thanh
+    if (audioUrl && accent !== 'UK') {
       try {
         setIsSpeaking(true);
         const audio = new Audio(audioUrl);
@@ -45,20 +44,16 @@ export default function AudioButton({
       }
     }
 
-    // Cách 2: Dùng trình đọc giọng nói Web Speech API của trình duyệt
     speakWithBrowserTTS();
   }
 
   function speakWithBrowserTTS() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('Trình duyệt của bạn không hỗ trợ phát âm tự động.');
       return;
     }
 
-    // Dừng giọng đọc cũ nếu đang đọc dở
     window.speechSynthesis.cancel();
 
-    // Làm sạch ký tự đặc biệt (như ™) để giọng đọc chuẩn hơn
     const cleanText = String(text).replace(/™/g, '').trim();
     if (!cleanText) {
       return;
@@ -66,10 +61,12 @@ export default function AudioButton({
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
-    // Chọn mã ngôn ngữ đọc: Tiếng Trung ('zh-CN') hoặc Tiếng Anh ('en-US')
     if (lang === 'ZH') {
       utterance.lang = 'zh-CN';
       utterance.rate = 0.9;
+    } else if (accent === 'UK') {
+      utterance.lang = 'en-GB';
+      utterance.rate = 0.94;
     } else {
       utterance.lang = 'en-US';
       utterance.rate = 0.95;
@@ -82,14 +79,14 @@ export default function AudioButton({
     window.speechSynthesis.speak(utterance);
   }
 
-  // Chỉnh kích thước nút theo tham số size ('sm' | 'md' | 'lg')
-  let sizeStyle = 'p-2 text-xs';
+  // Tuỳ chỉnh kích thước nút theo size ('sm' | 'md' | 'lg')
+  let sizeStyle = 'px-2.5 py-1.5 text-xs';
   let iconStyle = 'w-4 h-4';
   if (size === 'sm') {
-    sizeStyle = 'p-1.5 text-xs';
+    sizeStyle = label ? 'px-2 py-1 text-[11px]' : 'w-8 h-8 p-0';
     iconStyle = 'w-3.5 h-3.5';
   } else if (size === 'lg') {
-    sizeStyle = 'p-3 text-sm';
+    sizeStyle = 'px-3.5 py-2 text-sm';
     iconStyle = 'w-5 h-5';
   }
 
@@ -97,15 +94,15 @@ export default function AudioButton({
     <button
       type="button"
       onClick={handlePlayAudio}
-      title={`Nghe phát âm: ${text}`}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition border ${
+      title={`Nghe phát âm (${lang === 'ZH' ? 'Tiếng Trung' : accent}): ${text}`}
+      className={`btn-duo inline-flex items-center justify-center gap-1 rounded-xl font-bold border-2 cursor-pointer ${
         isSpeaking
-          ? 'bg-blue-600 text-white border-blue-600 shadow-sm scale-105'
-          : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/60 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+          ? 'bg-[#3c94d4] text-white border-[#1e64a5] shadow-[0_2px_0_0_#1e64a5]'
+          : 'bg-white dark:bg-slate-800 text-[#262c57] dark:text-slate-100 border-[#e2e8f0] dark:border-slate-700 shadow-duo-sm hover:border-[#3c94d4] hover:text-[#3c94d4]'
       } ${sizeStyle} ${className}`}
     >
       <Volume2 className={`${iconStyle} ${isSpeaking ? 'animate-pulse' : ''}`} />
-      {label && <span>{label}</span>}
+      {label ? <span>{label}</span> : null}
     </button>
   );
 }
