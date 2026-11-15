@@ -7,6 +7,7 @@ import {
   getMe,
   updatePreferences,
 } from '../controllers/authController.js';
+import { getCatalogDecks } from '../controllers/deckController.js';
 
 const router = express.Router();
 
@@ -33,5 +34,12 @@ router.get('/auth/me', authMiddleware, getMe);
 // Đổi ngôn ngữ học tập ('EN' <-> 'ZH')
 router.patch('/auth/language', authMiddleware, updatePreferences);
 router.patch('/users/me/preferences', authMiddleware, updatePreferences);
+
+// ==========================================
+// 3. NHÓM ĐƯỜNG DẪN BỘ THẺ TỪ VỰNG (CATALOG & DECKS)
+// ==========================================
+
+// Lấy danh sách các bộ thẻ kèm tiến độ học và số liệu nhắc ôn tập hôm nay
+router.get('/decks', authMiddleware, getCatalogDecks);
 
 export default router;
